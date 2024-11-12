@@ -2,13 +2,22 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-class PowerPlant:
+class FutureCapacity:
+    def __init__(self, amount: float, time: float, quarterly_cost: float):
+        self.amount = amount
+        self.time = time
+        self.quarterly_cost = quarterly_cost
+
+
+class Producer:
     def __init__(
         self,
         emission: float,
         capacity: dict[float, float] | int,
         cost: float,
         name: str,
+        capital: float = 0,
+        margin: float = 1,
     ):
         """Initializes a power plant.
 
@@ -19,14 +28,61 @@ class PowerPlant:
                       value. We expect the time to be in hours (24 hour clock) and
                       in constant intervals.
             cost: Cost in €/MWh
+            name: Name of the power plant
+            capital: Capital in €
+            margin: How much the profit per MWh should be in €
         """
         self.emission = emission
         if isinstance(capacity, int):
             self.capacity = {0: capacity}
-        else:
+            self.initial_capacity = {0: capacity}
+        elif isinstance(capacity, dict):
             self.capacity = capacity
+            self.initial_capacity = capacity.copy()
+        else:
+            raise ValueError("Capacity should be either a dict or an int")
         self.cost = cost
         self.name = name
+        self.capital = capital
+        self.future_capacity: list[FutureCapacity] = []
+        self.chunk_cost = 1_000_000  # €
+        self.chunk_amount = 0.01  # Percentage of original capacity
+        self.chunk_time = 4  # Quarters
+        self.margin = margin
+
+    def decision_making(self):
+        if self.capital > self.chunk_cost:
+            cost_per_quarter = self.chunk_cost / self.chunk_time
+            self.future_capacity.append(
+                FutureCapacity(self.chunk_amount, self.chunk_time, cost_per_quarter)
+            )
+
+    def run_quarter(self, daily_production: float):
+        daily_income = daily_production * self.cost
+        daily_cost = daily_production * (self.cost - self.margin)
+        daily_profit = daily_income - daily_cost
+        quarterly_profit = daily_profit * 90
+        # Update capital
+        self.capital += quarterly_profit
+        # Update capacity
+        self.update_capacity()
+        # Update whether to buy capacity
+        self.decision_making()
+
+    def update_capacity(self):
+        new_future_capacity = []
+        for future_capacity in self.future_capacity:
+            future_capacity.time -= 1
+            self.capital -= future_capacity.quarterly_cost
+            if future_capacity.time <= 0:
+                self.new_capacity = {
+                    k: v * future_capacity.amount
+                    for k, v in self.initial_capacity.items()
+                }
+                self.capacity = add_dicts(self.capacity, self.new_capacity)
+            else:
+                new_future_capacity.append(future_capacity)
+        self.future_capacity = new_future_capacity
 
     def capacity_f(self, time: float):
         """Returns the capacity of the power plant at a given time.
@@ -53,8 +109,14 @@ class PowerPlant:
     def emission_f(self, time: float):
         return self.emission
 
+    def capital_f(self):
+        return self.capital
 
-class Coal(PowerPlant):
+    def __str__(self):
+        return f"{self.name} - {self.capacity}, {self.cost}, {self.emission}, {self.capital}, {self.future_capacity}, {self.chunk_cost}, {self.chunk_amount}, {self.chunk_time}, {self.margin}"
+
+
+class Coal(Producer):
     def __init__(
         self,
         emission: float = 820,
@@ -65,7 +127,7 @@ class Coal(PowerPlant):
         super().__init__(emission, capacity, cost, name)
 
 
-class Oil(PowerPlant):
+class Oil(Producer):
     def __init__(
         self,
         emission: float = 600,
@@ -76,7 +138,7 @@ class Oil(PowerPlant):
         super().__init__(emission, capacity, cost, name)
 
 
-class Gas(PowerPlant):
+class Gas(Producer):
     def __init__(
         self,
         emission: float = 490,
@@ -87,7 +149,7 @@ class Gas(PowerPlant):
         super().__init__(emission, capacity, cost, name)
 
 
-class Nuclear(PowerPlant):
+class Nuclear(Producer):
     def __init__(
         self,
         emission: float = 12,
@@ -98,7 +160,7 @@ class Nuclear(PowerPlant):
         super().__init__(emission, capacity, cost, name)
 
 
-class Hydro(PowerPlant):
+class Hydro(Producer):
     def __init__(
         self,
         emission: float = 24,
@@ -109,7 +171,7 @@ class Hydro(PowerPlant):
         super().__init__(emission, capacity, cost, name)
 
 
-class Wind(PowerPlant):
+class Wind(Producer):
     def __init__(
         self,
         emission: float = 11,
@@ -120,7 +182,7 @@ class Wind(PowerPlant):
         super().__init__(emission, capacity, cost, name)
 
 
-class Solar(PowerPlant):
+class Solar(Producer):
     def __init__(
         self,
         emission: float = 48,
@@ -131,7 +193,7 @@ class Solar(PowerPlant):
         super().__init__(emission, capacity, cost, name)
 
 
-def combine_production(dict1: dict[str, int], dict2: dict[str, int]) -> dict[str, int]:
+def add_dicts(dict1: dict[str, int], dict2: dict[str, int]) -> dict[str, int]:
     merged_dict = dict1.copy()
     for key, value in dict2.items():
         if key in merged_dict:
@@ -143,7 +205,7 @@ def combine_production(dict1: dict[str, int], dict2: dict[str, int]) -> dict[str
 
 class Market:
     def run_day_interval_constant_demand(
-        producers: list[PowerPlant], demand: float, interval: int = 30
+        producers: list[Producer], demand: float, interval: int = 30
     ):
         """Runs the market for a day with constant demand
 
@@ -156,7 +218,7 @@ class Market:
         demands = [demand] * intervals
         return Market.run_day_interval(producers, demands)
 
-    def run_day_interval(producers: list[PowerPlant], demands: list[float]):
+    def run_day_interval(producers: list[Producer], demands: list[float]):
         """Implements marginal pricing
 
         We assume a constant demand and production during our time step that is
@@ -182,14 +244,14 @@ class Market:
             )
             interval_production[interval] = production
 
-            total_production = combine_production(total_production, production)
+            total_production = add_dicts(total_production, production)
             total_cost += cost
             total_emission += emission
 
         return total_cost, total_emission, total_production, interval_production
 
     def run(
-        producers: list[PowerPlant],
+        producers: list[Producer],
         demand: float,
         time: float = 0,
         interval_length: int = 24,
@@ -241,7 +303,7 @@ class Market:
         return total_cost, total_emission, production
 
 
-def plot_capacities(producers: list[PowerPlant], demands: list[float]):
+def plot_capacities(producers: list[Producer], demands: list[float]):
     times = sorted(
         set(time for producer in producers for time in producer.capacity.keys())
     )
@@ -319,13 +381,21 @@ if __name__ == "__main__":
     plot_capacities([nuclear, hydro, wind, solar], demands)
 
     producers = [nuclear, hydro, wind, solar]
-    total_cost, total_emission, production, interval_production = (
-        Market.run_day_interval(producers, demands)
-    )
-    print(f"Total cost: {total_cost} €")
-    print(f"Total emission: {total_emission} kgCO2e")
-    print("Used producers:")
-    for producer, amount in production.items():
-        print(f"{producer} - {amount} MWh")
 
-    plot_interval_production(interval_production)
+    number_of_quarters = 36
+    for i in range(number_of_quarters):
+        print(f"Quarter {i}")
+        total_cost, total_emission, production, interval_production = (
+            Market.run_day_interval(producers, demands)
+        )
+        print(f"Total cost: {total_cost} €")
+        print(f"Total emission: {total_emission} kgCO2e")
+        # print("Used producers:")
+        for producer, amount in production.items():
+            for p in producers:
+                if p.name == producer:
+                    # print(p)
+                    p.run_quarter(amount)
+            # print(f"{producer} - {amount} MWh")
+
+        # plot_interval_production(interval_production)
