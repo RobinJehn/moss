@@ -49,6 +49,7 @@ class Producer:
         self.chunk_amount = 0.01  # Percentage of original capacity
         self.chunk_time = 4  # Quarters
         self.margin = margin
+        self.quarterly_profits = []
 
     def decision_making(self):
         if self.capital > self.chunk_cost:
@@ -57,6 +58,18 @@ class Producer:
                 FutureCapacity(self.chunk_amount, self.chunk_time, cost_per_quarter)
             )
 
+    def increase_capacity(self):
+        if self.capital > self.chunk_cost:
+            cost_per_quarter = self.chunk_cost / self.chunk_time
+            self.future_capacity.append(
+                FutureCapacity(self.chunk_amount, self.chunk_time, cost_per_quarter)
+            )
+
+    def decrease_capacity(self):
+        if len(self.capacity) > 0:
+            for k in self.capacity.keys():
+                self.capacity[k] = max(self.capacity[k] - self.chunk_amount * self.initial_capacity[k], 0)
+
     def run_quarter(self, daily_production: float):
         daily_income = daily_production * self.cost
         daily_cost = daily_production * (self.cost - self.margin)
@@ -64,9 +77,11 @@ class Producer:
         quarterly_profit = daily_profit * 90
         # Update capital
         self.capital += quarterly_profit
+        # Record quarterly profit
+        self.quarterly_profits.append(quarterly_profit)
         # Update capacity
         self.update_capacity()
-        # Update whether to buy capacity
+        # Make decision on increasing or decreasing capacity
         self.decision_making()
 
     def update_capacity(self):
