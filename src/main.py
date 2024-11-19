@@ -18,6 +18,8 @@ class Producer:
         name: str,
         capital: float = 0,
         margin: float = 1,
+        fixed_om: float = 0,  # Fixed O&M cost per MW of capacity (€ per quarter)
+        variable_om: float = 0,  # Variable O&M cost per MWh produced (€ per MWh)
     ):
         """Initializes a power plant.
 
@@ -31,6 +33,8 @@ class Producer:
             name: Name of the power plant
             capital: Capital in €
             margin: How much the profit per MWh should be in €
+            fixed_om: Fixed O&M cost per MW per quarter
+            variable_om: Variable O&M cost per MWh produced
         """
         self.emission = emission
         if isinstance(capacity, int):
@@ -42,6 +46,8 @@ class Producer:
         else:
             raise ValueError("Capacity should be either a dict or an int")
         self.cost = cost
+        self.variable_om = variable_om  # Added variable O&M
+        self.fixed_om = fixed_om  # Added fixed O&M
         self.name = name
         self.capital = capital
         self.future_capacity: list[FutureCapacity] = []
@@ -57,7 +63,7 @@ class Producer:
             self.future_capacity.append(
                 FutureCapacity(self.chunk_amount, self.chunk_time, cost_per_quarter)
             )
-
+    
     def increase_capacity(self):
         if self.capital > self.chunk_cost:
             cost_per_quarter = self.chunk_cost / self.chunk_time
@@ -75,10 +81,18 @@ class Producer:
         daily_cost = daily_production * (self.cost - self.margin)
         daily_profit = daily_income - daily_cost
         quarterly_profit = daily_profit * 90
+        # Calculate variable O&M costs
+        variable_om_cost = daily_production * 90 * self.variable_om
+         # Calculate fixed O&M costs
+        fixed_om_cost = sum(self.capacity.values()) * self.fixed_om
+
+         # Calculate total costs and update profits 
+        total_quarterly_cost = variable_om_cost + fixed_om_cost
+        net_quarterly_profit = quarterly_profit - total_quarterly_cost
         # Update capital
-        self.capital += quarterly_profit
+        self.capital += net_quarterly_profit
         # Record quarterly profit
-        self.quarterly_profits.append(quarterly_profit)
+        self.quarterly_profits.append(net_quarterly_profit)
         # Update capacity
         self.update_capacity()
         # Make decision on increasing or decreasing capacity
@@ -138,8 +152,10 @@ class Coal(Producer):
         capacity: float = 202_320,
         cost: float = 81.82,
         name: str = "Coal",
+        fixed_om :float = 92.8,
+        variable_om:float = 3.0
     ):
-        super().__init__(emission, capacity, cost, name)
+        super().__init__(emission, capacity, cost, name,fixed_om,variable_om)
 
 
 class Oil(Producer):
@@ -149,8 +165,10 @@ class Oil(Producer):
         capacity: float = 22_000,
         cost: float = 150,
         name: str = "Oil",
+        fixed_om :float = 92.8,
+        variable_om:float = 3.0
     ):
-        super().__init__(emission, capacity, cost, name)
+        super().__init__(emission, capacity, cost, name,fixed_om,variable_om)
 
 
 class Gas(Producer):
@@ -160,8 +178,10 @@ class Gas(Producer):
         capacity: float = 403_000,
         cost: float = 66.02,
         name: str = "Gas",
+        fixed_om:float = 18.4,  # Fixed O&M (€ per MW per quarter)
+        variable_om:float = 3.0  # Variable O&M (€ per MWh)
     ):
-        super().__init__(emission, capacity, cost, name)
+        super().__init__(emission, capacity, cost, name,fixed_om,variable_om)
 
 
 class Nuclear(Producer):
@@ -171,8 +191,10 @@ class Nuclear(Producer):
         capacity: float = 147_774,
         cost: float = 64.16,
         name: str = "Nuclear",
+        fixed_om:float = 157.5,
+        variable_om:float = 6.4
     ):
-        super().__init__(emission, capacity, cost, name)
+        super().__init__(emission, capacity, cost, name,fixed_om,variable_om)
 
 
 class Hydro(Producer):
@@ -182,8 +204,10 @@ class Hydro(Producer):
         capacity: float = 230_000,
         cost: float = 66.95,
         name: str = "Hydro",
+        fixed_om: float = 32.2,
+        variable_om: float = 0.0
     ):
-        super().__init__(emission, capacity, cost, name)
+        super().__init__(emission, capacity, cost, name,fixed_om,variable_om)
 
 
 class Wind(Producer):
@@ -193,8 +217,10 @@ class Wind(Producer):
         capacity: float = 255_000,
         cost: float = 46.49,
         name: str = "Wind",
+        fixed_om : float = 16,
+        variable_om: float= 0.02
     ):
-        super().__init__(emission, capacity, cost, name)
+        super().__init__(emission, capacity, cost, name,fixed_om,variable_om)
 
 
 class Solar(Producer):
@@ -204,8 +230,10 @@ class Solar(Producer):
         capacity: float = 259_990,
         cost: float = 52.07,
         name: str = "Solar",
+        fixed_om: float = 18.8,
+        variable_om: float = 0.0
     ):
-        super().__init__(emission, capacity, cost, name)
+        super().__init__(emission, capacity, cost, name,fixed_om,variable_om)
 
 
 def add_dicts(dict1: dict[str, int], dict2: dict[str, int]) -> dict[str, int]:
@@ -399,7 +427,7 @@ if __name__ == "__main__":
 
     number_of_quarters = 36
     for i in range(number_of_quarters):
-        print(f"Quarter {i}")
+        print(f"Quarter {i+1}")
         total_cost, total_emission, production, interval_production = (
             Market.run_day_interval(producers, demands)
         )
@@ -410,7 +438,7 @@ if __name__ == "__main__":
             for p in producers:
                 if p.name == producer:
                     # print(p)
-                    p.run_quarter(amount)
+                    p.run_quarter(amount / 90)
             # print(f"{producer} - {amount} MWh")
 
         # plot_interval_production(interval_production)
