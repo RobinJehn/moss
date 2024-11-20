@@ -56,6 +56,7 @@ class Producer:
         self.chunk_time = 4  # Quarters
         self.margin = margin
         self.quarterly_profits = []
+        self.subsidies = []
 
     def decision_making(self):
         if self.capital > self.chunk_cost:
