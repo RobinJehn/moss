@@ -145,6 +145,45 @@ class Producer:
         return f"{self.name} - {self.capacity}, {self.cost}, {self.emission}, {self.capital}, {self.future_capacity}, {self.chunk_cost}, {self.chunk_amount}, {self.chunk_time}, {self.margin}"
 
 
+class SubsidySimulation:
+    def __init__(self, subsidies_df: pd.DataFrame):
+        self.subsidies_df = subsidies_df
+
+    def simulate_subsidies(self, quarter: int, producer: Producer, production_mwh: float):
+        # Ensure the quarter is within bounds of the subsidies data
+        if quarter < len(self.subsidies_df):
+            # Get the subsidies for the current quarter
+            subsidy_data = self.subsidies_df.iloc[quarter]
+
+            # Determine the subsidy per MWh based on the producer type
+            if isinstance(producer, Wind):
+                subsidy_per_mwh = subsidy_data['Wind']
+            elif isinstance(producer, Solar):
+                subsidy_per_mwh = subsidy_data['Solar']
+            elif isinstance(producer, Gas):
+                subsidy_per_mwh = subsidy_data['Gas']
+            elif isinstance(producer, Hydro):
+                subsidy_per_mwh = subsidy_data['Hydro']
+            elif isinstance(producer, Coal):
+                subsidy_per_mwh = subsidy_data['Coal']
+            elif isinstance(producer, Nuclear):
+                subsidy_per_mwh = subsidy_data['Nuclear']
+            else:
+                subsidy_per_mwh = 0
+
+            # Calculate total subsidy based on production (subsidy per MWh * MWh produced)
+            total_subsidy = subsidy_per_mwh * production_mwh
+
+            # Apply the subsidy to the producer for the current quarter
+            producer.run_quarter(daily_production=production_mwh / 90, subsidies=total_subsidy)
+
+            # Return the calculated subsidy value
+            return total_subsidy
+
+        else:
+            print(f"Warning: Quarter {quarter} exceeds available subsidy data.")
+            return 0
+
 class Coal(Producer):
     def __init__(
         self,
