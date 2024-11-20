@@ -492,14 +492,21 @@ if __name__ == "__main__":
         total_cost, total_emission, production, interval_production = (
             Market.run_day_interval(producers, demands)
         )
+        total_demand = sum(demands)
+        if total_demand != 0:
+            marginal_price = total_cost / total_demand
+        else:
+            marginal_price = 0 
         print(f"Total cost: {total_cost} €")
         print(f"Total emission: {total_emission} kgCO2e")
         # print("Used producers:")
         for producer, amount in production.items():
             for p in producers:
                 if p.name == producer:
-                    # print(p)
-                    p.run_quarter(amount / 90)
+                    p.run_quarter(amount / 90, subsidies=subsidy_simulator.simulate_subsidies(i, p, amount), marginal_price=marginal_price)
+                    print(f"Production for {p.name} in Quarter {i+1}: {amount:.2f} MWh")
+        
+        print_producer_metrics(producers, "After Applying Subsidies")
             # print(f"{producer} - {amount} MWh")
 
         # plot_interval_production(interval_production)
