@@ -76,25 +76,38 @@ class Producer:
             for k in self.capacity.keys():
                 self.capacity[k] = max(self.capacity[k] - self.chunk_amount * self.initial_capacity[k], 0)
 
-    def run_quarter(self, daily_production: float):
-        daily_income = daily_production * self.cost
+    def run_quarter(self, daily_production: float, subsidies: float = 0, marginal_price: float = None):
+        # Use marginal_price if provided; otherwise, fall back to self.cost
+        if marginal_price is not None:
+            # Calculate daily income based on market price instead of self.cost
+            daily_income = (daily_production * marginal_price) + (subsidies / 90)
+        else:
+            daily_income = (daily_production * self.cost) + (subsidies / 90)
+        
+        # Calculate daily cost based on producer's own cost of production
         daily_cost = daily_production * (self.cost - self.margin)
         daily_profit = daily_income - daily_cost
         quarterly_profit = daily_profit * 90
+
         # Calculate variable O&M costs
         variable_om_cost = daily_production * 90 * self.variable_om
-         # Calculate fixed O&M costs
+
+        # Calculate fixed O&M costs
         fixed_om_cost = sum(self.capacity.values()) * self.fixed_om
 
-         # Calculate total costs and update profits 
+        # Calculate total costs and update profits
         total_quarterly_cost = variable_om_cost + fixed_om_cost
         net_quarterly_profit = quarterly_profit - total_quarterly_cost
+
         # Update capital
         self.capital += net_quarterly_profit
+
         # Record quarterly profit
         self.quarterly_profits.append(net_quarterly_profit)
+
         # Update capacity
         self.update_capacity()
+
         # Make decision on increasing or decreasing capacity
         self.decision_making()
 
