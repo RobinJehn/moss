@@ -471,12 +471,20 @@ if __name__ == "__main__":
     solar_capacity_dict = solar_capacity.to_dict()
     solar = Solar(capacity=solar_capacity_dict)
 
+    coal_capacity = data["Coal (GW)"] * 1_000
+    coal_capacity_dict = coal_capacity.to_dict()
+    coal = Coal(capacity=coal_capacity_dict)
+
+    gas_capacity = data["Gas (GW)"] * 1_000
+    gas_capacity_dict = gas_capacity.to_dict()
+    gas = Gas(capacity=gas_capacity_dict)
+
     demand_factor = 1 / 2
     demands = [value * 1_000 * demand_factor for value in data["Demand (GW)"]]
 
-    plot_capacities([nuclear, hydro, wind, solar], demands)
+    plot_capacities([nuclear, hydro, wind, solar, coal, gas], demands)
 
-    producers = [nuclear, hydro, wind, solar]
+    producers = [nuclear, hydro, wind, solar,coal, gas]
 
     number_of_quarters = 36
     for i in range(number_of_quarters):
