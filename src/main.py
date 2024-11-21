@@ -188,6 +188,8 @@ class SubsidySimulation:
             # Calculate total subsidy based on production (subsidy per MWh * MWh produced)
             total_subsidy = subsidy_per_mwh * production_mwh
 
+            print(f"Subsidy for {producer.name} in Quarter {quarter + 1}: {total_subsidy:.2f} €")
+
             # Apply the subsidy to the producer for the current quarter
             producer.run_quarter(daily_production=production_mwh / 90, subsidies=total_subsidy)
 
@@ -489,27 +491,39 @@ if __name__ == "__main__":
 
     producers = [nuclear, hydro, wind, solar,coal, gas]
 
-    number_of_quarters = 36
-    for i in range(number_of_quarters):
-        print(f"Quarter {i+1}")
-        total_cost, total_emission, production, interval_production = (
-            Market.run_day_interval(producers, demands)
-        )
-        total_demand = sum(demands)
-        if total_demand != 0:
-            marginal_price = total_cost / total_demand
-        else:
-            marginal_price = 0 
-        print(f"Total cost: {total_cost} €")
-        print(f"Total emission: {total_emission} kgCO2e")
-        # print("Used producers:")
-        for producer, amount in production.items():
-            for p in producers:
-                if p.name == producer:
-                    p.run_quarter(amount / 90, subsidies=subsidy_simulator.simulate_subsidies(i, p, amount), marginal_price=marginal_price)
-                    print(f"Production for {p.name} in Quarter {i+1}: {amount:.2f} MWh")
-        
-        print_producer_metrics(producers, "After Applying Subsidies")
+    for idx in range(len(subsidies_data)):
+        print(f"\n--- Running Simulation for Subsidy Data Row {idx+1} ---")
+
+        for producer in producers:
+            producer.capital = 0
+            producer.capacity = producer.initial_capacity.copy()
+            producer.quarterly_profits = []
+
+        for quarters in range(35):
+            print(f"\nQuarter {quarters + 1}")
+
+    
+            total_cost, total_emission, production, interval_production = (
+                Market.run_day_interval(producers, demands)
+            )
+            total_demand = sum(demands)
+            if total_demand != 0:
+                marginal_price = total_cost / total_demand
+            else:
+                marginal_price = 0 
+            print(f"Total cost: {total_cost} €")
+            print(f"Total emission: {total_emission} kgCO2e")
+            # print("Used producers:")
+            for producer, amount in production.items():
+                for p in producers:
+                    if p.name == producer:
+                        # print(p)
+                        
+                        p.run_quarter(amount / 90, subsidies=subsidy_simulator.simulate_subsidies(idx, p, amount), marginal_price=marginal_price)
+                        print(f"Production for {p.name} in Quarter {idx+1}: {amount:.2f} MWh")
+            
+            print_producer_metrics(producers, "After Applying Subsidies")
+                # print(f"{producer} - {amount} MWh")
             # print(f"{producer} - {amount} MWh")
 
         # plot_interval_production(interval_production)
