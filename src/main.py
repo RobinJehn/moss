@@ -59,11 +59,20 @@ class Producer:
         self.subsidies = []
 
     def decision_making(self):
-        if self.capital > self.chunk_cost:
-            cost_per_quarter = self.chunk_cost / self.chunk_time
-            self.future_capacity.append(
-                FutureCapacity(self.chunk_amount, self.chunk_time, cost_per_quarter)
-            )
+        # Check if we have enough quarterly profit data to make decisions
+        if len(self.quarterly_profits) >= 3:
+            # Check the last three quarters' profits
+            last_three_profits = self.quarterly_profits[-3:]
+
+            # If profits decreased for three consecutive quarters, decommission capacity
+            if all(last_three_profits[i] > last_three_profits[i + 1] for i in range(2)):
+                self.decrease_capacity()
+
+        # Check if we have at least one quarter of profit data to determine profit increase
+        if len(self.quarterly_profits) >= 2:
+            # Compare the most recent two quarters to determine if profits have increased
+            if self.quarterly_profits[-1] > self.quarterly_profits[-2]:
+                self.increase_capacity()
     
     def increase_capacity(self):
         if self.capital > self.chunk_cost:
