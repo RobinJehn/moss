@@ -453,6 +453,9 @@ if __name__ == "__main__":
     def read_data(file_path: str) -> pd.DataFrame:
         return pd.read_csv(file_path)
 
+    subsidies_data = read_data("../data/subsidies_grid.csv")
+    subsidy_simulator = SubsidySimulation(subsidies_data)
+
     data = read_data("../data/data.csv")
 
     nuclear_capacity = data["Nuclear (GW)"] * 1_000
