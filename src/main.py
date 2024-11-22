@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import csv
 
+
 class FutureCapacity:
     def __init__(self, amount: float, time: float, quarterly_cost: float):
         self.amount = amount
@@ -73,7 +74,7 @@ class Producer:
             # Compare the most recent two quarters to determine if profits have increased
             if self.quarterly_profits[-1] > self.quarterly_profits[-2]:
                 self.increase_capacity()
-    
+
     def increase_capacity(self):
         if self.capital > self.chunk_cost:
             cost_per_quarter = self.chunk_cost / self.chunk_time
@@ -84,16 +85,23 @@ class Producer:
     def decrease_capacity(self):
         if len(self.capacity) > 0:
             for k in self.capacity.keys():
-                self.capacity[k] = max(self.capacity[k] - self.chunk_amount * self.initial_capacity[k], 0)
+                self.capacity[k] = max(
+                    self.capacity[k] - self.chunk_amount * self.initial_capacity[k], 0
+                )
 
-    def run_quarter(self, daily_production: float, subsidies: float = 0, marginal_price: float = None):
+    def run_quarter(
+        self,
+        daily_production: float,
+        subsidies: float = 0,
+        marginal_price: float = None,
+    ):
         # Use marginal_price if provided; otherwise, fall back to self.cost
         if marginal_price is not None:
             # Calculate daily income based on market price instead of self.cost
             daily_income = (daily_production * marginal_price) + (subsidies / 90)
         else:
             daily_income = (daily_production * self.cost) + (subsidies / 90)
-        
+
         # Calculate daily cost based on producer's own cost of production
         daily_cost = daily_production * (self.cost - self.margin)
         daily_profit = daily_income - daily_cost
@@ -172,7 +180,9 @@ class SubsidySimulation:
     def __init__(self, subsidies_df: pd.DataFrame):
         self.subsidies_df = subsidies_df
 
-    def simulate_subsidies(self, quarter: int, producer: Producer, production_mwh: float):
+    def simulate_subsidies(
+        self, quarter: int, producer: Producer, production_mwh: float
+    ):
         # Ensure the quarter is within bounds of the subsidies data
         if quarter < len(self.subsidies_df):
             # Get the subsidies for the current quarter
@@ -180,27 +190,31 @@ class SubsidySimulation:
 
             # Determine the subsidy per MWh based on the producer type
             if isinstance(producer, Wind):
-                subsidy_per_mwh = subsidy_data['Wind']
+                subsidy_per_mwh = subsidy_data["Wind"]
             elif isinstance(producer, Solar):
-                subsidy_per_mwh = subsidy_data['Solar']
+                subsidy_per_mwh = subsidy_data["Solar"]
             elif isinstance(producer, Gas):
-                subsidy_per_mwh = subsidy_data['Gas']
+                subsidy_per_mwh = subsidy_data["Gas"]
             elif isinstance(producer, Hydro):
-                subsidy_per_mwh = subsidy_data['Hydro']
+                subsidy_per_mwh = subsidy_data["Hydro"]
             elif isinstance(producer, Coal):
-                subsidy_per_mwh = subsidy_data['Coal']
+                subsidy_per_mwh = subsidy_data["Coal"]
             elif isinstance(producer, Nuclear):
-                subsidy_per_mwh = subsidy_data['Nuclear']
+                subsidy_per_mwh = subsidy_data["Nuclear"]
             else:
                 subsidy_per_mwh = 0
 
             # Calculate total subsidy based on production (subsidy per MWh * MWh produced)
             total_subsidy = subsidy_per_mwh * production_mwh
 
-            print(f"Subsidy for {producer.name} in Quarter {quarter + 1}: {total_subsidy:.2f} €")
+            print(
+                f"Subsidy for {producer.name} in Quarter {quarter + 1}: {total_subsidy:.2f} €"
+            )
 
             # Apply the subsidy to the producer for the current quarter
-            producer.run_quarter(daily_production=production_mwh / 90, subsidies=total_subsidy)
+            producer.run_quarter(
+                daily_production=production_mwh / 90, subsidies=total_subsidy
+            )
 
             # Return the calculated subsidy value
             return total_subsidy
@@ -209,6 +223,7 @@ class SubsidySimulation:
             print(f"Warning: Quarter {quarter} exceeds available subsidy data.")
             return 0
 
+
 class Coal(Producer):
     def __init__(
         self,
@@ -216,10 +231,10 @@ class Coal(Producer):
         capacity: float = 202_320,
         cost: float = 81.82,
         name: str = "Coal",
-        fixed_om :float = 92.8,
-        variable_om:float = 3.0
+        fixed_om: float = 92.8,
+        variable_om: float = 3.0,
     ):
-        super().__init__(emission, capacity, cost, name,fixed_om,variable_om)
+        super().__init__(emission, capacity, cost, name, fixed_om, variable_om)
 
 
 class Oil(Producer):
@@ -229,10 +244,10 @@ class Oil(Producer):
         capacity: float = 22_000,
         cost: float = 150,
         name: str = "Oil",
-        fixed_om :float = 92.8,
-        variable_om:float = 3.0
+        fixed_om: float = 92.8,
+        variable_om: float = 3.0,
     ):
-        super().__init__(emission, capacity, cost, name,fixed_om,variable_om)
+        super().__init__(emission, capacity, cost, name, fixed_om, variable_om)
 
 
 class Gas(Producer):
@@ -242,10 +257,10 @@ class Gas(Producer):
         capacity: float = 403_000,
         cost: float = 66.02,
         name: str = "Gas",
-        fixed_om:float = 18.4,  # Fixed O&M (€ per MW per quarter)
-        variable_om:float = 3.0  # Variable O&M (€ per MWh)
+        fixed_om: float = 18.4,  # Fixed O&M (€ per MW per quarter)
+        variable_om: float = 3.0,  # Variable O&M (€ per MWh)
     ):
-        super().__init__(emission, capacity, cost, name,fixed_om,variable_om)
+        super().__init__(emission, capacity, cost, name, fixed_om, variable_om)
 
 
 class Nuclear(Producer):
@@ -255,10 +270,23 @@ class Nuclear(Producer):
         capacity: float = 147_774,
         cost: float = 64.16,
         name: str = "Nuclear",
-        fixed_om:float = 157.5,
-        variable_om:float = 6.4
+        fixed_om: float = 157.5,
+        variable_om: float = 6.4,
     ):
-        super().__init__(emission, capacity, cost, name,fixed_om,variable_om)
+        super().__init__(emission, capacity, cost, name, fixed_om, variable_om)
+
+
+class Waste(Producer):
+    def __init__(
+        self,
+        emission: float = 600,
+        capacity: float = 11_000,
+        cost: float = 150,
+        name: str = "Waste",
+        fixed_om: float = 92.8,
+        variable_om: float = 3.0,
+    ):
+        super().__init__(emission, capacity, cost, name, fixed_om, variable_om)
 
 
 class Hydro(Producer):
@@ -269,9 +297,9 @@ class Hydro(Producer):
         cost: float = 66.95,
         name: str = "Hydro",
         fixed_om: float = 32.2,
-        variable_om: float = 0.0
+        variable_om: float = 0.0,
     ):
-        super().__init__(emission, capacity, cost, name,fixed_om,variable_om)
+        super().__init__(emission, capacity, cost, name, fixed_om, variable_om)
 
 
 class Wind(Producer):
@@ -281,10 +309,10 @@ class Wind(Producer):
         capacity: float = 255_000,
         cost: float = 46.49,
         name: str = "Wind",
-        fixed_om : float = 16,
-        variable_om: float= 0.02
+        fixed_om: float = 16,
+        variable_om: float = 0.02,
     ):
-        super().__init__(emission, capacity, cost, name,fixed_om,variable_om)
+        super().__init__(emission, capacity, cost, name, fixed_om, variable_om)
 
 
 class Solar(Producer):
@@ -295,9 +323,9 @@ class Solar(Producer):
         cost: float = 52.07,
         name: str = "Solar",
         fixed_om: float = 18.8,
-        variable_om: float = 0.0
+        variable_om: float = 0.0,
     ):
-        super().__init__(emission, capacity, cost, name,fixed_om,variable_om)
+        super().__init__(emission, capacity, cost, name, fixed_om, variable_om)
 
 
 def add_dicts(dict1: dict[str, int], dict2: dict[str, int]) -> dict[str, int]:
@@ -458,32 +486,46 @@ def plot_interval_production(interval_production: dict[int, dict[str, float]]):
     ax.legend()
     plt.show()
 
+
 def print_producer_metrics(producers, label):
     print(f"\n--- {label} ---")
     for producer in producers:
         profit = producer.quarterly_profits[-1] if producer.quarterly_profits else 0
-        print(f"{producer.name}: Capacity = {sum(producer.capacity.values()):.2f} MW, Capital = {producer.capital:.2f} €, Profit This Quarter = {profit:.2f} €")
-        
+        print(
+            f"{producer.name}: Capacity = {sum(producer.capacity.values()):.2f} MW, Capital = {producer.capital:.2f} €, Profit This Quarter = {profit:.2f} €"
+        )
+
         # Print a warning if capital or profit is negative
         if profit < 0:
-            print(f"WARNING: {producer.name} has negative profit of {profit:.2f} € in this quarter.")
+            print(
+                f"WARNING: {producer.name} has negative profit of {profit:.2f} € in this quarter."
+            )
         if producer.capital < 0:
-            print(f"WARNING: {producer.name} has negative capital of {producer.capital:.2f} €, indicating financial trouble.")
+            print(
+                f"WARNING: {producer.name} has negative capital of {producer.capital:.2f} €, indicating financial trouble."
+            )
 
 
 if __name__ == "__main__":
 
     output_csv_path = "simulation_results.csv"
-    with open(output_csv_path, mode='w', newline='') as csv_file:
+    with open(output_csv_path, mode="w", newline="") as csv_file:
         csv_writer = csv.writer(csv_file)
         # Write the header row
-        csv_writer.writerow([
-            "Dataset Row", "Quarter", "Total CO2 Emission (kgCO2e)", 
-            "Total Cost (€)", "Total Subsidy for Nuclear (€)", 
-            "Total Subsidy for Solar (€)", "Total Subsidy for Wind (€)",
-            "Total Subsidy for Gas (€)", "Total Subsidy for Hydro (€)",
-            "Total Subsidy for Coal (€)"
-        ])
+        csv_writer.writerow(
+            [
+                "Dataset Row",
+                "Quarter",
+                "Total CO2 Emission (kgCO2e)",
+                "Total Cost (€)",
+                "Total Subsidy for Nuclear (€)",
+                "Total Subsidy for Solar (€)",
+                "Total Subsidy for Wind (€)",
+                "Total Subsidy for Gas (€)",
+                "Total Subsidy for Hydro (€)",
+                "Total Subsidy for Coal (€)",
+            ]
+        )
 
     def read_data(file_path: str) -> pd.DataFrame:
         return pd.read_csv(file_path)
@@ -517,12 +559,15 @@ if __name__ == "__main__":
     gas_capacity_dict = gas_capacity.to_dict()
     gas = Gas(capacity=gas_capacity_dict)
 
+    waste_capacity = data["Biomass (GW)"] * 1_000
+    waste_capacity_dict = waste_capacity.to_dict()
+    waste = Waste(capacity=waste_capacity_dict)
+
     demand_factor = 1 / 2
     demands = [value * 1_000 * demand_factor for value in data["Demand (GW)"]]
 
-    plot_capacities([nuclear, hydro, wind, solar, coal, gas], demands)
-
-    producers = [nuclear, hydro, wind, solar,coal, gas]
+    producers = [nuclear, hydro, wind, solar, coal, gas, waste]
+    plot_capacities(producers, demands)
 
     for idx in range(len(subsidies_data)):
         print(f"\n--- Running Simulation for Subsidy Data Row {idx+1} ---")
@@ -535,7 +580,6 @@ if __name__ == "__main__":
         for quarters in range(35):
             print(f"\nQuarter {quarters + 1}")
 
-    
             total_cost, total_emission, production, interval_production = (
                 Market.run_day_interval(producers, demands)
             )
@@ -543,7 +587,7 @@ if __name__ == "__main__":
             if total_demand != 0:
                 marginal_price = total_cost / total_demand
             else:
-                marginal_price = 0 
+                marginal_price = 0
             print(f"Total cost: {total_cost} €")
             print(f"Total emission: {total_emission} kgCO2e")
 
@@ -560,23 +604,38 @@ if __name__ == "__main__":
                 for p in producers:
                     if p.name == producer:
                         # print(p)
-                        
-                        p.run_quarter(amount / 90, subsidies=subsidy_simulator.simulate_subsidies(idx, p, amount), marginal_price=marginal_price)
-                        print(f"Production for {p.name} in Quarter {idx+1}: {amount:.2f} MWh")
+
+                        p.run_quarter(
+                            amount / 90,
+                            subsidies=subsidy_simulator.simulate_subsidies(
+                                idx, p, amount
+                            ),
+                            marginal_price=marginal_price,
+                        )
+                        print(
+                            f"Production for {p.name} in Quarter {idx+1}: {amount:.2f} MWh"
+                        )
                         quarterly_subsidies[p.name] += subsidy
 
-
-            with open(output_csv_path, mode='a', newline='') as csv_file:
+            with open(output_csv_path, mode="a", newline="") as csv_file:
                 csv_writer = csv.writer(csv_file)
-                csv_writer.writerow([
-                    idx + 1, quarters + 1, total_emission, total_cost,
-                    quarterly_subsidies["Nuclear"], quarterly_subsidies["Solar"],
-                    quarterly_subsidies["Wind"], quarterly_subsidies["Gas"],
-                    quarterly_subsidies["Hydro"], quarterly_subsidies["Coal"]
-                ])
-            
+                csv_writer.writerow(
+                    [
+                        idx + 1,
+                        quarters + 1,
+                        total_emission,
+                        total_cost,
+                        quarterly_subsidies["Nuclear"],
+                        quarterly_subsidies["Solar"],
+                        quarterly_subsidies["Wind"],
+                        quarterly_subsidies["Gas"],
+                        quarterly_subsidies["Hydro"],
+                        quarterly_subsidies["Coal"],
+                    ]
+                )
+
             print_producer_metrics(producers, "After Applying Subsidies")
-                # print(f"{producer} - {amount} MWh")
+            # print(f"{producer} - {amount} MWh")
             # print(f"{producer} - {amount} MWh")
 
         # plot_interval_production(interval_production)
