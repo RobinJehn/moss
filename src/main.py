@@ -458,6 +458,18 @@ def plot_interval_production(interval_production: dict[int, dict[str, float]]):
     ax.legend()
     plt.show()
 
+def print_producer_metrics(producers, label):
+    print(f"\n--- {label} ---")
+    for producer in producers:
+        profit = producer.quarterly_profits[-1] if producer.quarterly_profits else 0
+        print(f"{producer.name}: Capacity = {sum(producer.capacity.values()):.2f} MW, Capital = {producer.capital:.2f} €, Profit This Quarter = {profit:.2f} €")
+        
+        # Print a warning if capital or profit is negative
+        if profit < 0:
+            print(f"WARNING: {producer.name} has negative profit of {profit:.2f} € in this quarter.")
+        if producer.capital < 0:
+            print(f"WARNING: {producer.name} has negative capital of {producer.capital:.2f} €, indicating financial trouble.")
+
 
 if __name__ == "__main__":
 
