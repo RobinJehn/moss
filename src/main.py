@@ -1,6 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-
+import csv
 
 class FutureCapacity:
     def __init__(self, amount: float, time: float, quarterly_cost: float):
