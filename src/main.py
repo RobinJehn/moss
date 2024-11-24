@@ -235,6 +235,9 @@ class Coal(Producer):
         variable_om: float = 3.0,
     ):
         super().__init__(emission, capacity, cost, name, fixed_om, variable_om)
+        self.chunk_cost = 1_600_000_000  # 1600 million EUR
+        self.chunk_amount = self.capacity[0] * 0.01  # 1% of initial capacity
+        self.chunk_time = 20  # Expansion time in quarters
 
 
 class Oil(Producer):
@@ -261,6 +264,9 @@ class Gas(Producer):
         variable_om: float = 3.0,  # Variable O&M (€ per MWh)
     ):
         super().__init__(emission, capacity, cost, name, fixed_om, variable_om)
+        self.chunk_cost = 500_000_000  # 500 million EUR
+        self.chunk_amount = 500  # Block capacity in MWh/h
+        self.chunk_time = 10  # Expansion time in quarters
 
 
 class Nuclear(Producer):
@@ -274,6 +280,9 @@ class Nuclear(Producer):
         variable_om: float = 6.4,
     ):
         super().__init__(emission, capacity, cost, name, fixed_om, variable_om)
+        self.chunk_cost = 8_000_000_000  # 8000 million EUR
+        self.chunk_amount = self.capacity[0] * 0.02  # 2% of initial capacity
+        self.chunk_time = 32  # Expansion time in quarters
 
 
 class Waste(Producer):
@@ -313,6 +322,9 @@ class Wind(Producer):
         variable_om: float = 0.02,
     ):
         super().__init__(emission, capacity, cost, name, fixed_om, variable_om)
+        self.chunk_cost = 125_000_000  # 125 million EUR
+        self.chunk_amount = self.capacity[0] * 0.003  # 0.3% of initial capacity
+        self.chunk_time = 6  # Expansion time in quarters
 
 
 class Solar(Producer):
@@ -326,6 +338,9 @@ class Solar(Producer):
         variable_om: float = 0.0,
     ):
         super().__init__(emission, capacity, cost, name, fixed_om, variable_om)
+        self.chunk_cost = 125_000_000  # 125 million EUR
+        self.chunk_amount = self.capacity[0] * 0.002  # 0.2% of initial capacity
+        self.chunk_time = 6  # Expansion time in quarters
 
 
 def add_dicts(dict1: dict[str, int], dict2: dict[str, int]) -> dict[str, int]:
@@ -615,6 +630,7 @@ if __name__ == "__main__":
                         print(
                             f"Production for {p.name} in Quarter {idx+1}: {amount:.2f} MWh"
                         )
+                        subsidy = subsidy_simulator.simulate_subsidies(idx, p, amount)
                         quarterly_subsidies[p.name] += subsidy
 
             with open(output_csv_path, mode="a", newline="") as csv_file:
