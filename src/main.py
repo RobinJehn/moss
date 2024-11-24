@@ -285,7 +285,7 @@ class Nuclear(Producer):
         self.chunk_time = 32  # Expansion time in quarters
 
 
-class Waste(Producer):
+class Biomass(Producer):
     def __init__(
         self,
         emission: float = 600,
@@ -536,6 +536,7 @@ if __name__ == "__main__":
                 "Total Subsidy for Nuclear (€)",
                 "Total Subsidy for Solar (€)",
                 "Total Subsidy for Wind (€)",
+                "Total Subsidy for Biomass (€)",
                 "Total Subsidy for Gas (€)",
                 "Total Subsidy for Hydro (€)",
                 "Total Subsidy for Coal (€)",
@@ -574,14 +575,14 @@ if __name__ == "__main__":
     gas_capacity_dict = gas_capacity.to_dict()
     gas = Gas(capacity=gas_capacity_dict)
 
-    waste_capacity = data["Biomass (GW)"] * 1_000
-    waste_capacity_dict = waste_capacity.to_dict()
-    waste = Waste(capacity=waste_capacity_dict)
+    biomass_capacity = data["Biomass (GW)"] * 1_000
+    biomass_capacity_dict = biomass_capacity.to_dict()
+    biomass = Biomass(capacity=waste_capacity_dict)
 
-    demand_factor = 1 / 2
+    demand_factor = 1.5
     demands = [value * 1_000 * demand_factor for value in data["Demand (GW)"]]
 
-    producers = [nuclear, hydro, wind, solar, coal, gas, waste]
+    producers = [nuclear, hydro, wind, solar, coal, gas, biomass]
     plot_capacities(producers, demands)
 
     for idx in range(len(subsidies_data)):
@@ -610,6 +611,7 @@ if __name__ == "__main__":
                 "Nuclear": 0,
                 "Solar": 0,
                 "Wind": 0,
+                "Biomass": 0,
                 "Gas": 0,
                 "Hydro": 0,
                 "Coal": 0,
@@ -644,6 +646,7 @@ if __name__ == "__main__":
                         quarterly_subsidies["Nuclear"],
                         quarterly_subsidies["Solar"],
                         quarterly_subsidies["Wind"],
+                        quarterly_subsidies["Biomass"],
                         quarterly_subsidies["Gas"],
                         quarterly_subsidies["Hydro"],
                         quarterly_subsidies["Coal"],
