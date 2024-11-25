@@ -620,17 +620,19 @@ if __name__ == "__main__":
         for quarter in range(35):
             print(f"\nQuarter {quarter + 1}")
 
-            # TODO: these are the daily values, not monthly
-            total_cost, total_emission, production, interval_production = (
-                Market.run_day_interval(producers, demands)
-            )
-            total_demand = sum(demands)
-            if total_demand != 0:
-                marginal_price = total_cost / total_demand
+            (
+                daily_total_cost,
+                daily_total_emission,
+                daily_production,
+                daily_interval_production,
+            ) = Market.run_day_interval(producers, demands)
+            daily_total_demand = sum(demands)
+            if daily_total_demand != 0:
+                marginal_price = daily_total_cost / daily_total_demand
             else:
                 marginal_price = 0
-            print(f"Total cost: {total_cost} €")
-            print(f"Total emission: {total_emission} kgCO2e")
+            print(f"Total daily cost: {daily_total_cost} €")
+            print(f"Total daily emission: {daily_total_emission} kgCO2e")
 
             quarterly_subsidies = {
                 "Waste": 0,
@@ -642,31 +644,33 @@ if __name__ == "__main__":
                 "Hydro": 0,
                 "Coal": 0,
             }
-            for producer, amount in production.items():
+            for producer, daily_amount in daily_production.items():
                 for p in producers:
                     if p.name == producer:
+                        quarterly_amount = daily_amount * 90
                         print(
-                            f"Production for {p.name} in Quarter {quarter+1}: {amount:.2f} MWh"
+                            f"Production for {p.name} in Quarter {quarter+1}: {quarterly_amount:.2f} MWh"
                         )
 
                         subsidy = subsidy_simulator.simulate_subsidies(
-                            quarter, p, amount
+                            quarter, p, quarterly_amount
                         )
                         quarterly_subsidies[p.name] += subsidy
                         p.run_quarter(
-                            amount / 90,
+                            daily_amount,
                             subsidies=subsidy,
                             marginal_price=marginal_price,
                         )
-
+            quarterly_emissions = daily_total_emission * 90
+            quarterly_costs = daily_total_cost * 90
             with open(output_csv_path, mode="a", newline="") as csv_file:
                 csv_writer = csv.writer(csv_file)
                 csv_writer.writerow(
                     [
                         idx + 1,
                         quarter + 1,
-                        total_emission,
-                        total_cost,
+                        quarterly_emissions,
+                        quarterly_costs,
                         quarterly_subsidies["Nuclear"],
                         quarterly_subsidies["Solar"],
                         quarterly_subsidies["Wind"],
