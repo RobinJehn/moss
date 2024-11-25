@@ -617,9 +617,10 @@ if __name__ == "__main__":
         for producer in producers:
             producer.reset()
 
-        for quarters in range(35):
-            print(f"\nQuarter {quarters + 1}")
+        for quarter in range(35):
+            print(f"\nQuarter {quarter + 1}")
 
+            # TODO: these are the daily values, not monthly
             total_cost, total_emission, production, interval_production = (
                 Market.run_day_interval(producers, demands)
             )
@@ -641,15 +642,16 @@ if __name__ == "__main__":
                 "Hydro": 0,
                 "Coal": 0,
             }
-            # print("Used producers:")
             for producer, amount in production.items():
                 for p in producers:
                     if p.name == producer:
                         print(
-                            f"Production for {p.name} in Quarter {idx+1}: {amount:.2f} MWh"
+                            f"Production for {p.name} in Quarter {quarter+1}: {amount:.2f} MWh"
                         )
 
-                        subsidy = subsidy_simulator.simulate_subsidies(idx, p, amount)
+                        subsidy = subsidy_simulator.simulate_subsidies(
+                            quarter, p, amount
+                        )
                         quarterly_subsidies[p.name] += subsidy
                         p.run_quarter(
                             amount / 90,
@@ -662,7 +664,7 @@ if __name__ == "__main__":
                 csv_writer.writerow(
                     [
                         idx + 1,
-                        quarters + 1,
+                        quarter + 1,
                         total_emission,
                         total_cost,
                         quarterly_subsidies["Nuclear"],
