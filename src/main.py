@@ -59,6 +59,12 @@ class Producer:
         self.quarterly_profits = []
         self.subsidies = []
 
+    def reset(self):
+        self.capital = 0
+        self.capacity = self.initial_capacity.copy()
+        self.future_capacity = []
+        self.quarterly_profits = []
+
     def decision_making(self):
         # Check if we have enough quarterly profit data to make decisions
         if len(self.quarterly_profits) >= 3:
@@ -144,7 +150,7 @@ class Producer:
                 new_future_capacity.append(future_capacity)
         self.future_capacity = new_future_capacity
 
-    def capacity_f(self, time: float):
+    def capacity_f(self, time: float) -> float:
         """Returns the capacity of the power plant at a given time.
 
         Assumes that if the time falls between two time points, we return the
@@ -163,16 +169,16 @@ class Producer:
                 return self.capacity[t]
         return 0
 
-    def cost_f(self, time: float):
+    def cost_f(self, time: float) -> float:
         return self.cost
 
-    def emission_f(self, time: float):
+    def emission_f(self, time: float) -> float:
         return self.emission
 
-    def capital_f(self):
+    def capital_f(self) -> float:
         return self.capital
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.name} - {self.capacity}, {self.cost}, {self.emission}, {self.capital}, {self.future_capacity}, {self.chunk_cost}, {self.chunk_amount}, {self.chunk_time}, {self.margin}"
 
 
@@ -182,7 +188,20 @@ class SubsidySimulation:
 
     def simulate_subsidies(
         self, quarter: int, producer: Producer, production_mwh: float
-    ):
+    ) -> float:
+        """
+        Calculates how much subsidies the producer gets and runs the simulation for
+        one quarter for the producer.
+
+        Args:
+            quarter: Which quarter to get subsidies for
+            producer: Which producer to subsidies
+            production_mwh: How many mwh the producer produced for this quarter.
+
+        Returns:
+            Amount of subsidies
+        """
+
         # Ensure the quarter is within bounds of the subsidies data
         if quarter < len(self.subsidies_df):
             # Get the subsidies for the current quarter
@@ -343,7 +362,7 @@ class Solar(Producer):
         self.chunk_time = 6  # Expansion time in quarters
 
 
-def add_dicts(dict1: dict[str, int], dict2: dict[str, int]) -> dict[str, int]:
+def add_dicts(dict1: dict[str, float], dict2: dict[str, float]) -> dict[str, float]:
     merged_dict = dict1.copy()
     for key, value in dict2.items():
         if key in merged_dict:
@@ -356,19 +375,27 @@ def add_dicts(dict1: dict[str, int], dict2: dict[str, int]) -> dict[str, int]:
 class Market:
     def run_day_interval_constant_demand(
         producers: list[Producer], demand: float, interval: int = 30
-    ):
+    ) -> tuple[float, float, dict[str, float], dict[int, dict[str, float]]]:
         """Runs the market for a day with constant demand
 
         Args:
             producers: List of producers
             demand: Demand in MW for the entire day
             interval: Time interval in minutes
+
+         Returns:
+            total_cost: Total cost in €
+            total_emission: Total emissions in kgCO2e
+            total_production: Dictionary with the name of the producer and the MWh produced
+            interval_production: Dictionary with the interval as key and the production as value
         """
         intervals = 24 * 60 // interval
         demands = [demand] * intervals
         return Market.run_day_interval(producers, demands)
 
-    def run_day_interval(producers: list[Producer], demands: list[float]):
+    def run_day_interval(
+        producers: list[Producer], demands: list[float]
+    ) -> tuple[float, float, dict[str, float], dict[int, dict[str, float]]]:
         """Implements marginal pricing
 
         We assume a constant demand and production during our time step that is
@@ -378,6 +405,12 @@ class Market:
             producers: List of producers
             demand: Demand in MW for each time step. Assumed to start at 00:00 and
                     be in constant intervals.
+
+        Returns:
+            total_cost: Total cost in €
+            total_emission: Total emissions in kgCO2e
+            total_production: Dictionary with the name of the producer and the MWh produced
+            interval_production: Dictionary with the interval as key and the production as value
         """
         intervals = len(demands)
         interval_length = 24 / intervals
@@ -405,7 +438,7 @@ class Market:
         demand: float,
         time: float = 0,
         interval_length: int = 24,
-    ):
+    ) -> tuple[float, float, dict[str, float]]:
         """Implements marginal pricing
 
         We assume a constant demand and production during our time step that is
@@ -522,7 +555,6 @@ def print_producer_metrics(producers, label):
 
 
 if __name__ == "__main__":
-
     output_csv_path = "simulation_results.csv"
     with open(output_csv_path, mode="w", newline="") as csv_file:
         csv_writer = csv.writer(csv_file)
@@ -582,16 +614,14 @@ if __name__ == "__main__":
     demand_factor = 1.5
     demands = [value * 1_000 * demand_factor for value in data["Demand (GW)"]]
 
-    producers = [nuclear, hydro, wind, solar, coal, gas, biomass]
+    producers: list[Producer] = [nuclear, hydro, wind, solar, coal, gas, biomass]
     plot_capacities(producers, demands)
 
     for idx in range(len(subsidies_data)):
         print(f"\n--- Running Simulation for Subsidy Data Row {idx+1} ---")
 
         for producer in producers:
-            producer.capital = 0
-            producer.capacity = producer.initial_capacity.copy()
-            producer.quarterly_profits = []
+            producer.reset()
 
         for quarters in range(35):
             print(f"\nQuarter {quarters + 1}")
