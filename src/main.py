@@ -18,7 +18,6 @@ class Producer:
         cost: float,
         name: str,
         capital: float = 0,
-        margin: float = 1,
         fixed_om: float = 0,  # Fixed O&M cost per MW of capacity (€ per quarter)
         variable_om: float = 0,  # Variable O&M cost per MWh produced (€ per MWh)
     ):
@@ -33,7 +32,6 @@ class Producer:
             cost: Cost in €/MWh
             name: Name of the power plant
             capital: Capital in €
-            margin: How much the profit per MWh should be in €
             fixed_om: Fixed O&M cost per MW per quarter
             variable_om: Variable O&M cost per MWh produced
         """
@@ -55,7 +53,6 @@ class Producer:
         self.chunk_cost = 1_000_000  # €
         self.chunk_amount = 0.01  # Percentage of original capacity
         self.chunk_time = 4  # Quarters
-        self.margin = margin
         self.quarterly_profits = []
         self.subsidies = []
 
@@ -98,35 +95,22 @@ class Producer:
     def run_quarter(
         self,
         daily_production: float,
-        subsidies: float = 0,
-        marginal_price: float = None,
+        marginal_price: float,
+        quarterly_subsidies: float = 0,
     ):
-        # Use marginal_price if provided; otherwise, fall back to self.cost
-        if marginal_price is not None:
-            # Calculate daily income based on market price instead of self.cost
-            daily_income = (daily_production * marginal_price) + (subsidies / 90)
-        else:
-            daily_income = (daily_production * self.cost) + (subsidies / 90)
+        daily_income = daily_production * marginal_price
 
         # Calculate daily cost based on producer's own cost of production
-        daily_cost = daily_production * (self.cost - self.margin)
+        daily_cost = daily_production * (self.cost + self.variable_om)
         daily_profit = daily_income - daily_cost
         quarterly_profit = daily_profit * 90
 
-        # Calculate variable O&M costs
-        variable_om_cost = daily_production * 90 * self.variable_om
-
-        # Calculate fixed O&M costs
+        # Substract/add fixed values
         fixed_om_cost = sum(self.capacity.values()) * self.fixed_om
-
-        # Calculate total costs and update profits
-        total_quarterly_cost = variable_om_cost + fixed_om_cost
-        net_quarterly_profit = quarterly_profit - total_quarterly_cost
-
-        # Update capital
-        self.capital += net_quarterly_profit
+        net_quarterly_profit = quarterly_profit - fixed_om_cost + quarterly_subsidies
 
         # Record quarterly profit
+        self.capital += net_quarterly_profit
         self.quarterly_profits.append(net_quarterly_profit)
 
         # Update capacity
@@ -179,7 +163,7 @@ class Producer:
         return self.capital
 
     def __str__(self) -> str:
-        return f"{self.name} - {self.capacity}, {self.cost}, {self.emission}, {self.capital}, {self.future_capacity}, {self.chunk_cost}, {self.chunk_amount}, {self.chunk_time}, {self.margin}"
+        return f"{self.name} - {self.capacity}, {self.cost}, {self.emission}, {self.capital}, {self.future_capacity}, {self.chunk_cost}, {self.chunk_amount}, {self.chunk_time}"
 
 
 class SubsidySimulation:
@@ -249,7 +233,7 @@ class Coal(Producer):
     ):
         super().__init__(emission, capacity, cost, name, fixed_om, variable_om)
         self.chunk_cost = 1_600_000_000  # 1600 million EUR
-        self.chunk_amount = self.capacity[0] * 0.01  # 1% of initial capacity
+        self.chunk_amount = 0.01  # 1% of initial capacity
         self.chunk_time = 20  # Expansion time in quarters
 
 
@@ -278,7 +262,7 @@ class Gas(Producer):
     ):
         super().__init__(emission, capacity, cost, name, fixed_om, variable_om)
         self.chunk_cost = 500_000_000  # 500 million EUR
-        self.chunk_amount = 500  # Block capacity in MWh/h
+        self.chunk_amount = 0.01  # 1% of initial capacity
         self.chunk_time = 10  # Expansion time in quarters
 
 
@@ -294,7 +278,7 @@ class Nuclear(Producer):
     ):
         super().__init__(emission, capacity, cost, name, fixed_om, variable_om)
         self.chunk_cost = 8_000_000_000  # 8000 million EUR
-        self.chunk_amount = self.capacity[0] * 0.02  # 2% of initial capacity
+        self.chunk_amount = 0.02  # 2% of initial capacity
         self.chunk_time = 32  # Expansion time in quarters
 
 
@@ -336,7 +320,7 @@ class Wind(Producer):
     ):
         super().__init__(emission, capacity, cost, name, fixed_om, variable_om)
         self.chunk_cost = 125_000_000  # 125 million EUR
-        self.chunk_amount = self.capacity[0] * 0.003  # 0.3% of initial capacity
+        self.chunk_amount = 0.003  # 0.3% of initial capacity
         self.chunk_time = 6  # Expansion time in quarters
 
 
@@ -352,7 +336,7 @@ class Solar(Producer):
     ):
         super().__init__(emission, capacity, cost, name, fixed_om, variable_om)
         self.chunk_cost = 125_000_000  # 125 million EUR
-        self.chunk_amount = self.capacity[0] * 0.002  # 0.2% of initial capacity
+        self.chunk_amount = 0.002  # 0.2% of initial capacity
         self.chunk_time = 6  # Expansion time in quarters
 
 
@@ -627,10 +611,8 @@ if __name__ == "__main__":
                 daily_interval_production,
             ) = Market.run_day_interval(producers, demands)
             daily_total_demand = sum(demands)
-            if daily_total_demand != 0:
-                marginal_price = daily_total_cost / daily_total_demand
-            else:
-                marginal_price = 0
+            marginal_price = daily_total_cost / daily_total_demand
+
             print(f"Total daily cost: {daily_total_cost} €")
             print(f"Total daily emission: {daily_total_emission} kgCO2e")
 
@@ -658,8 +640,8 @@ if __name__ == "__main__":
                         quarterly_subsidies[p.name] += subsidy
                         p.run_quarter(
                             daily_amount,
-                            subsidies=subsidy,
                             marginal_price=marginal_price,
+                            quarterly_subsidies=subsidy,
                         )
             quarterly_emissions = daily_total_emission * 90
             quarterly_costs = daily_total_cost * 90
@@ -685,4 +667,4 @@ if __name__ == "__main__":
             # print(f"{producer} - {amount} MWh")
             # print(f"{producer} - {amount} MWh")
 
-        # plot_interval_production(interval_production)
+        plot_interval_production(daily_interval_production)
