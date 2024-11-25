@@ -577,7 +577,7 @@ if __name__ == "__main__":
 
     biomass_capacity = data["Biomass (GW)"] * 1_000
     biomass_capacity_dict = biomass_capacity.to_dict()
-    biomass = Biomass(capacity=waste_capacity_dict)
+    biomass = Biomass(capacity=biomass_capacity_dict)
 
     demand_factor = 1.5
     demands = [value * 1_000 * demand_factor for value in data["Demand (GW)"]]
@@ -608,6 +608,7 @@ if __name__ == "__main__":
             print(f"Total emission: {total_emission} kgCO2e")
 
             quarterly_subsidies = {
+                "Waste": 0,
                 "Nuclear": 0,
                 "Solar": 0,
                 "Wind": 0,
