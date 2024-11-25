@@ -190,8 +190,7 @@ class SubsidySimulation:
         self, quarter: int, producer: Producer, production_mwh: float
     ) -> float:
         """
-        Calculates how much subsidies the producer gets and runs the simulation for
-        one quarter for the producer.
+        Calculates how much subsidies the producer gets for the given quarter.
 
         Args:
             quarter: Which quarter to get subsidies for
@@ -228,11 +227,6 @@ class SubsidySimulation:
 
             print(
                 f"Subsidy for {producer.name} in Quarter {quarter + 1}: {total_subsidy:.2f} €"
-            )
-
-            # Apply the subsidy to the producer for the current quarter
-            producer.run_quarter(
-                daily_production=production_mwh / 90, subsidies=total_subsidy
             )
 
             # Return the calculated subsidy value
@@ -651,20 +645,17 @@ if __name__ == "__main__":
             for producer, amount in production.items():
                 for p in producers:
                     if p.name == producer:
-                        # print(p)
-
-                        p.run_quarter(
-                            amount / 90,
-                            subsidies=subsidy_simulator.simulate_subsidies(
-                                idx, p, amount
-                            ),
-                            marginal_price=marginal_price,
-                        )
                         print(
                             f"Production for {p.name} in Quarter {idx+1}: {amount:.2f} MWh"
                         )
+
                         subsidy = subsidy_simulator.simulate_subsidies(idx, p, amount)
                         quarterly_subsidies[p.name] += subsidy
+                        p.run_quarter(
+                            amount / 90,
+                            subsidies=subsidy,
+                            marginal_price=marginal_price,
+                        )
 
             with open(output_csv_path, mode="a", newline="") as csv_file:
                 csv_writer = csv.writer(csv_file)
