@@ -171,13 +171,13 @@ class SubsidySimulation:
         self.subsidies_df = subsidies_df
 
     def simulate_subsidies(
-        self, quarter: int, producer: Producer, production_mwh: float
+        self, idx: int, producer: Producer, production_mwh: float
     ) -> float:
         """
         Calculates how much subsidies the producer gets for the given quarter.
 
         Args:
-            quarter: Which quarter to get subsidies for
+            idx: Which subsidy parameters to use
             producer: Which producer to subsidies
             production_mwh: How many mwh the producer produced for this quarter.
 
@@ -186,9 +186,9 @@ class SubsidySimulation:
         """
 
         # Ensure the quarter is within bounds of the subsidies data
-        if quarter < len(self.subsidies_df):
+        if idx < len(self.subsidies_df):
             # Get the subsidies for the current quarter
-            subsidy_data = self.subsidies_df.iloc[quarter]
+            subsidy_data = self.subsidies_df.iloc[idx]
 
             # Determine the subsidy per MWh based on the producer type
             if isinstance(producer, Wind):
@@ -235,19 +235,6 @@ class Coal(Producer):
         self.chunk_cost = 1_600_000_000  # 1600 million EUR
         self.chunk_amount = 0.01  # 1% of initial capacity
         self.chunk_time = 20  # Expansion time in quarters
-
-
-class Oil(Producer):
-    def __init__(
-        self,
-        emission: float = 600,
-        capacity: float = 22_000,
-        cost: float = 150,
-        name: str = "Oil",
-        fixed_om: float = 92.8,
-        variable_om: float = 3.0,
-    ):
-        super().__init__(emission, capacity, cost, name, fixed_om, variable_om)
 
 
 class Gas(Producer):
@@ -589,7 +576,7 @@ if __name__ == "__main__":
     biomass_capacity_dict = biomass_capacity.to_dict()
     biomass = Biomass(capacity=biomass_capacity_dict)
 
-    demand_factor = 1.5
+    demand_factor = 1
     demands = [value * 1_000 * demand_factor for value in data["Demand (GW)"]]
 
     producers: list[Producer] = [nuclear, hydro, wind, solar, coal, gas, biomass]
@@ -601,7 +588,7 @@ if __name__ == "__main__":
         for producer in producers:
             producer.reset()
 
-        for quarter in range(35):
+        for quarter in range(50):
             print(f"\nQuarter {quarter + 1}")
 
             (
@@ -635,7 +622,7 @@ if __name__ == "__main__":
                         )
 
                         subsidy = subsidy_simulator.simulate_subsidies(
-                            quarter, p, quarterly_amount
+                            idx, p, quarterly_amount
                         )
                         quarterly_subsidies[p.name] += subsidy
                         p.run_quarter(
