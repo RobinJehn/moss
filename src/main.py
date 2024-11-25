@@ -3,6 +3,12 @@ import matplotlib.pyplot as plt
 import csv
 
 
+def log(msg: str):
+    should_print = False
+    if should_print:
+        print(msg)
+
+
 class FutureCapacity:
     def __init__(self, amount: float, time: float, quarterly_cost: float):
         self.amount = amount
@@ -75,7 +81,7 @@ class Producer:
         # Check if we have at least one quarter of profit data to determine profit increase
         if len(self.quarterly_profits) >= 2:
             # Compare the most recent two quarters to determine if profits have increased
-            if self.quarterly_profits[-1] > self.quarterly_profits[-2]:
+            if self.quarterly_profits[-1] >= self.quarterly_profits[-2]:
                 self.increase_capacity()
 
     def increase_capacity(self):
@@ -209,7 +215,7 @@ class SubsidySimulation:
             # Calculate total subsidy based on production (subsidy per MWh * MWh produced)
             total_subsidy = subsidy_per_mwh * production_mwh
 
-            print(
+            log(
                 f"Subsidy for {producer.name} in Quarter {quarter + 1}: {total_subsidy:.2f} €"
             )
 
@@ -217,7 +223,7 @@ class SubsidySimulation:
             return total_subsidy
 
         else:
-            print(f"Warning: Quarter {quarter} exceeds available subsidy data.")
+            log(f"Warning: Quarter {quarter} exceeds available subsidy data.")
             return 0
 
 
@@ -307,7 +313,7 @@ class Wind(Producer):
     ):
         super().__init__(emission, capacity, cost, name, fixed_om, variable_om)
         self.chunk_cost = 125_000_000  # 125 million EUR
-        self.chunk_amount = 0.003  # 0.3% of initial capacity
+        self.chunk_amount = 0.03  # 3% of initial capacity
         self.chunk_time = 6  # Expansion time in quarters
 
 
@@ -323,7 +329,7 @@ class Solar(Producer):
     ):
         super().__init__(emission, capacity, cost, name, fixed_om, variable_om)
         self.chunk_cost = 125_000_000  # 125 million EUR
-        self.chunk_amount = 0.002  # 0.2% of initial capacity
+        self.chunk_amount = 0.02  # 2% of initial capacity
         self.chunk_time = 6  # Expansion time in quarters
 
 
@@ -501,20 +507,20 @@ def plot_interval_production(interval_production: dict[int, dict[str, float]]):
 
 
 def print_producer_metrics(producers, label):
-    print(f"\n--- {label} ---")
+    log(f"\n--- {label} ---")
     for producer in producers:
         profit = producer.quarterly_profits[-1] if producer.quarterly_profits else 0
-        print(
+        log(
             f"{producer.name}: Capacity = {sum(producer.capacity.values()):.2f} MW, Capital = {producer.capital:.2f} €, Profit This Quarter = {profit:.2f} €"
         )
 
         # Print a warning if capital or profit is negative
         if profit < 0:
-            print(
+            log(
                 f"WARNING: {producer.name} has negative profit of {profit:.2f} € in this quarter."
             )
         if producer.capital < 0:
-            print(
+            log(
                 f"WARNING: {producer.name} has negative capital of {producer.capital:.2f} €, indicating financial trouble."
             )
 
@@ -540,13 +546,10 @@ if __name__ == "__main__":
             ]
         )
 
-    def read_data(file_path: str) -> pd.DataFrame:
-        return pd.read_csv(file_path)
-
-    subsidies_data = read_data("../data/subsidies_grid.csv")
+    subsidies_data = pd.read_csv("../data/subsidies_grid.csv")
     subsidy_simulator = SubsidySimulation(subsidies_data)
 
-    data = read_data("../data/data.csv")
+    data = pd.read_csv("../data/data.csv")
 
     nuclear_capacity = data["Nuclear (GW)"] * 1_000
     nuclear_capacity_dict = nuclear_capacity.to_dict()
@@ -583,13 +586,13 @@ if __name__ == "__main__":
     plot_capacities(producers, demands)
 
     for idx in range(len(subsidies_data)):
-        print(f"\n--- Running Simulation for Subsidy Data Row {idx+1} ---")
+        log(f"\n--- Running Simulation for Subsidy Data Row {idx+1} ---")
 
         for producer in producers:
             producer.reset()
 
         for quarter in range(50):
-            print(f"\nQuarter {quarter + 1}")
+            log(f"\nQuarter {quarter + 1}")
 
             (
                 daily_total_cost,
@@ -600,8 +603,8 @@ if __name__ == "__main__":
             daily_total_demand = sum(demands)
             marginal_price = daily_total_cost / daily_total_demand
 
-            print(f"Total daily cost: {daily_total_cost} €")
-            print(f"Total daily emission: {daily_total_emission} kgCO2e")
+            log(f"Total daily cost: {daily_total_cost} €")
+            log(f"Total daily emission: {daily_total_emission} kgCO2e")
 
             quarterly_subsidies = {
                 "Waste": 0,
@@ -617,7 +620,7 @@ if __name__ == "__main__":
                 for p in producers:
                     if p.name == producer:
                         quarterly_amount = daily_amount * 90
-                        print(
+                        log(
                             f"Production for {p.name} in Quarter {quarter+1}: {quarterly_amount:.2f} MWh"
                         )
 
@@ -650,8 +653,6 @@ if __name__ == "__main__":
                     ]
                 )
 
-            print_producer_metrics(producers, "After Applying Subsidies")
-            # print(f"{producer} - {amount} MWh")
-            # print(f"{producer} - {amount} MWh")
-
-        plot_interval_production(daily_interval_production)
+            # print_producer_metrics(producers, "After Applying Subsidies")
+        # plot_interval_production(daily_interval_production)
+        # plot_capacities(producers, demands)
