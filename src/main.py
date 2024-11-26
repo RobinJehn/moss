@@ -89,10 +89,7 @@ class Producer:
     def increase_capacity(self):
         if self.chunk_cost == 0:
             return
-        min_remaining = 0  # 3 * self.chunk_cost
-        available_capital = max(
-            self.capital - self.planned_investment - min_remaining, 0
-        )
+        available_capital = max(self.capital - self.planned_investment, 0)
         number_to_add = min(available_capital // self.chunk_cost, 20)
 
         cost_per_quarter = self.chunk_cost / self.chunk_time
@@ -104,7 +101,8 @@ class Producer:
 
     def decrease_capacity(self):
         if len(self.future_capacity) > 0:
-            self.future_capacity.pop(0)
+            fc = self.future_capacity.pop(0)
+            self.planned_investment -= fc.quarterly_cost * fc.time
 
         if self.quarterly_profits[-1] > self.chunk_cost:
             return
