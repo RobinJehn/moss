@@ -16,8 +16,8 @@ total = 125.0
 res_distribution = np.array([0.50, 0.15, 0.30, 0.05])
 ffs_distribution = np.array([2.23, 7.87])
 
-nuclear_percentages = np.linspace(0, 1, 11)
-renewable_percentages = np.linspace(0, 1, 11)
+nuclear_percentages = np.linspace(0, 1, 41)
+renewable_percentages = np.linspace(0, 1, 41)
 
 columns = [
     "Nuclear",
