@@ -252,6 +252,26 @@ if __name__ == "__main__":
         results, parameters, parameter_combinations, ["Total CO2 Emission (kgCO2e)"]
     )
 
+    capital = [
+        "Nuclear Capital (€)",
+        "Solar Capital (€)",
+        "Wind Capital (€)",
+        "Biomass Capital (€)",
+        "Gas Capital (€)",
+        "Hydro Capital (€)",
+        "Coal Capital (€)",
+    ]
+
+    buildings = [
+        "Nuclear plants building",
+        "Solar plants building",
+        "Wind plants building",
+        "Biomass plants building",
+        "Gas plants building",
+        "Hydro plants building",
+        "Coal plants building",
+    ]
+
     capacities = [
         "Nuclear Capacity (MW)",
         "Solar Capacity (MW)",
@@ -286,6 +306,8 @@ if __name__ == "__main__":
     plot_multiple_metrics_over_time_single_plot(
         results, parameters, [(0, 0)], nuclear_metrics
     )
+    plot_multiple_metrics_over_time_single_plot(results, parameters, [(0, 0)], capital)
+    plot_multiple_metrics_over_time_single_plot(results, parameters, [(0, 0)], buildings)
 
     # Subplots visualization
     plot_multiple_metrics_over_time_subplots(
@@ -296,4 +318,10 @@ if __name__ == "__main__":
     )
     plot_multiple_metrics_over_time_subplots(
         results, parameters, parameter_combinations, nuclear_metrics
+    )
+    plot_multiple_metrics_over_time_subplots(
+        results, parameters, parameter_combinations, capital
+    )
+    plot_multiple_metrics_over_time_subplots(
+        results, parameters, parameter_combinations, buildings
     )
