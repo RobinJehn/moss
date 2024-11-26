@@ -10,41 +10,57 @@ def load_data(results_file, parameters_file):
     return results, parameters
 
 
-def get_total_emissions(results, parameters):
+def compute_total_subsidies_and_costs(results):
     """
-    Compute total emissions by summing over all quarters and merge with parameters.
+    Compute total subsidies and total cost to society.
     """
-    total_emissions = (
-        results.groupby("Dataset Row")["Total CO2 Emission (kgCO2e)"]
-        .sum()
-        .reset_index()
+    total_subsidy_columns = [
+        "Total Subsidy for Nuclear (€)",
+        "Total Subsidy for Solar (€)",
+        "Total Subsidy for Wind (€)",
+        "Total Subsidy for Biomass (€)",
+        "Total Subsidy for Gas (€)",
+        "Total Subsidy for Hydro (€)",
+        "Total Subsidy for Coal (€)",
+    ]
+    # Sum subsidies across energy types for each row
+    results["Total Subsidy (€)"] = results[total_subsidy_columns].sum(axis=1)
+    # Compute total cost to society
+    results["Total Cost to Society (€)"] = (
+        results["Total Cost (€)"] + results["Total Subsidy (€)"]
     )
-    total_emissions_with_parameters = total_emissions.merge(
+    return results
+
+
+def get_total_values(results, parameters, values):
+    """
+    Compute total values by summing over all quarters and merge with parameters.
+    """
+    total_values = results.groupby("Dataset Row")[values].sum().reset_index()
+    total_values_with_parameters = total_values.merge(
         parameters, left_on="Dataset Row", right_index=True
     ).drop(columns=["Dataset Row"])
-    return total_emissions_with_parameters
+    return total_values_with_parameters
 
 
-def get_emissions_for_quarter(results, parameters, quarter):
+def get_values_for_quarter(results, parameters, quarter):
     """
-    Filter emissions for a specific quarter and merge with parameters.
+    Filter values for a specific quarter and merge with parameters.
     """
     filtered_results = results[results["Quarter"] == quarter]
-    emissions_for_quarter = filtered_results.merge(
+    values_for_quarter = filtered_results.merge(
         parameters, left_on="Dataset Row", right_index=True
     ).drop(columns=["Dataset Row", "Quarter"])
-    return emissions_for_quarter
+    return values_for_quarter
 
 
-def prepare_heatmap_data(emissions_data):
+def prepare_heatmap_data(values_data, values):
     """
     Prepare data for the heatmap by rounding percentages and creating a pivot table.
     """
-    emissions_data["NUC%"] = emissions_data["NUC%"].round(2)
-    emissions_data["RES%"] = emissions_data["RES%"].round(2)
-    heatmap_data = emissions_data.pivot_table(
-        index="NUC%", columns="RES%", values="Total CO2 Emission (kgCO2e)"
-    )
+    values_data["NUC%"] = values_data["NUC%"].round(2)
+    values_data["RES%"] = values_data["RES%"].round(2)
+    heatmap_data = values_data.pivot_table(index="NUC%", columns="RES%", values=values)
     return heatmap_data
 
 
@@ -69,9 +85,9 @@ def plot_heatmap(heatmap_data, title):
     plt.show()
 
 
-def plot_emissions_over_time(results, parameters, res_value, nuc_value):
+def plot_values_over_time(results, parameters, res_value, nuc_value, values):
     """
-    Plot CO2 emissions over time for a specific combination of RES% and NUC%.
+    Plot total values over time for a specific combination of RES% and NUC%.
 
     Parameters:
         results (DataFrame): Results dataset.
@@ -79,7 +95,7 @@ def plot_emissions_over_time(results, parameters, res_value, nuc_value):
         res_value (float): Desired RES% value.
         nuc_value (float): Desired NUC% value.
     """
-    # Merge results with parameters to associate emissions with RES% and NUC%
+    # Merge results with parameters to associate values with RES% and NUC%
     merged_data = results.merge(parameters, left_on="Dataset Row", right_index=True)
 
     # Filter data for the specific RES% and NUC% values
@@ -88,23 +104,19 @@ def plot_emissions_over_time(results, parameters, res_value, nuc_value):
         & (merged_data["NUC%"].round(2) == round(nuc_value, 2))
     ]
 
-    # Aggregate CO2 emissions by quarter for the specific parameter combination
-    emissions_over_time = (
-        filtered_data.groupby("Quarter")["Total CO2 Emission (kgCO2e)"]
-        .sum()
-        .reset_index()
-    )
+    # Aggregate total cost to society by quarter for the specific parameter combination
+    values_over_time = filtered_data.groupby("Quarter")[values].sum().reset_index()
 
     # Plot the results
     plt.figure(figsize=(10, 6))
     plt.plot(
-        emissions_over_time["Quarter"],
-        emissions_over_time["Total CO2 Emission (kgCO2e)"],
+        values_over_time["Quarter"],
+        values_over_time[values],
         marker="o",
     )
-    plt.title(f"CO2 Emissions Over Time\n(RES%={res_value}, NUC%={nuc_value})")
+    plt.title(f"{values} Over Time\n(RES%={res_value}, NUC%={nuc_value})")
     plt.xlabel("Quarter")
-    plt.ylabel("Total CO2 Emission (kgCO2e)")
+    plt.ylabel(values)
     plt.grid(True)
     plt.show()
 
@@ -223,22 +235,72 @@ if __name__ == "__main__":
     # Load the data
     results, parameters = load_data("simulation_results.csv", "subsidies.csv")
 
+    # Compute total subsidies and total cost to society
+    results = compute_total_subsidies_and_costs(results)
+
+    quarter = 60
+    quarter_values = get_values_for_quarter(results, parameters, quarter)
+
     # Total emissions heatmap
-    total_emissions = get_total_emissions(results, parameters)
-    total_heatmap_data = prepare_heatmap_data(total_emissions)
+    total_emissions = get_total_values(
+        results, parameters, "Total CO2 Emission (kgCO2e)"
+    )
+    total_heatmap_data = prepare_heatmap_data(
+        total_emissions, "Total CO2 Emission (kgCO2e)"
+    )
     plot_heatmap(
         total_heatmap_data, "Heatmap of Total CO2 Emission (kgCO2e) Across All Quarters"
     )
 
-    # Emissions for Quarter 50 heatmap
-    quarter_emissions = get_emissions_for_quarter(results, parameters, quarter=50)
-    quarter_heatmap_data = prepare_heatmap_data(quarter_emissions)
+    quarter_heatmap_data = prepare_heatmap_data(
+        quarter_values, "Total CO2 Emission (kgCO2e)"
+    )
     plot_heatmap(
-        quarter_heatmap_data, "Heatmap of CO2 Emission (kgCO2e) for Quarter 50"
+        quarter_heatmap_data, f"Heatmap of CO2 Emission (kgCO2e) for Quarter {quarter}"
     )
 
     # Visualize CO2 emissions over time for a specific parameter combination
-    plot_emissions_over_time(results, parameters, res_value=0, nuc_value=0)
+    plot_values_over_time(
+        results,
+        parameters,
+        res_value=0,
+        nuc_value=0,
+        values="Total CO2 Emission (kgCO2e)",
+    )
+
+    # Total costs heatmap
+    total_costs = get_total_values(results, parameters, "Total Cost to Society (€)")
+    total_costs_heatmap_data = prepare_heatmap_data(
+        total_costs, "Total Cost to Society (€)"
+    )
+    plot_heatmap(
+        total_costs_heatmap_data,
+        "Heatmap of Total Cost to Society (€) Across All Quarters",
+    )
+
+    quarter_costs_heatmap_data = prepare_heatmap_data(
+        quarter_values, "Total Cost to Society (€)"
+    )
+    plot_heatmap(
+        quarter_costs_heatmap_data,
+        f"Heatmap of Total Cost to Society (€) for Quarter {quarter}",
+    )
+
+    # Visualize total costs over time for a specific parameter combination
+    plot_values_over_time(
+        results,
+        parameters,
+        res_value=0,
+        nuc_value=0,
+        values="Total Cost to Society (€)",
+    )
+    plot_values_over_time(
+        results,
+        parameters,
+        res_value=0,
+        nuc_value=0,
+        values="Total Cost to Society (€)",
+    )
 
     # Define parameter combinations (list of (RES%, NUC%))
     parameter_combinations = [
@@ -247,10 +309,20 @@ if __name__ == "__main__":
         (0.70, 0.30),  # RES%=70, NUC%=30
     ]
 
-    # Single plot visualization
+    # Define cost metrics
+    cost_metrics = ["Total Cost (€)", "Total Subsidy (€)", "Total Cost to Society (€)"]
+
+    # Single plot visualization for costs
     plot_multiple_metrics_over_time_single_plot(
-        results, parameters, parameter_combinations, ["Total CO2 Emission (kgCO2e)"]
+        results, parameters, parameter_combinations, cost_metrics
     )
+
+    # Subplots visualization for costs
+    plot_multiple_metrics_over_time_subplots(
+        results, parameters, parameter_combinations, cost_metrics
+    )
+
+    # Continue with your existing code for other metrics...
 
     capital = [
         "Nuclear Capital (€)",
@@ -297,6 +369,7 @@ if __name__ == "__main__":
         "Nuclear Production (MWh)",
     ]
 
+    # Plotting other metrics as before...
     plot_multiple_metrics_over_time_single_plot(
         results, parameters, [(0, 0)], capacities
     )
@@ -307,7 +380,9 @@ if __name__ == "__main__":
         results, parameters, [(0, 0)], nuclear_metrics
     )
     plot_multiple_metrics_over_time_single_plot(results, parameters, [(0, 0)], capital)
-    plot_multiple_metrics_over_time_single_plot(results, parameters, [(0, 0)], buildings)
+    plot_multiple_metrics_over_time_single_plot(
+        results, parameters, [(0, 0)], buildings
+    )
 
     # Subplots visualization
     plot_multiple_metrics_over_time_subplots(
