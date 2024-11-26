@@ -93,7 +93,7 @@ class Producer:
         available_capital = max(
             self.capital - self.planned_investment - min_remaining, 0
         )
-        number_to_add = min(available_capital // self.chunk_cost, 5)
+        number_to_add = min(available_capital // self.chunk_cost, 20)
 
         cost_per_quarter = self.chunk_cost / self.chunk_time
         self.planned_investment += self.chunk_cost * number_to_add
@@ -103,16 +103,18 @@ class Producer:
             )
 
     def decrease_capacity(self):
-        for _ in range(3):
-            if len(self.future_capacity) > 0:
-                self.future_capacity.pop(0)
+        if len(self.future_capacity) > 0:
+            self.future_capacity.pop(0)
 
-            if len(self.capacity) > 0:
-                for k in self.capacity.keys():
-                    self.capacity[k] = max(
-                        self.capacity[k] - self.chunk_amount * self.initial_capacity[k],
-                        0,
-                    )
+        if self.quarterly_profits[-1] > self.chunk_cost:
+            return
+
+        if len(self.capacity) > 0:
+            for k in self.capacity.keys():
+                self.capacity[k] = max(
+                    self.capacity[k] - self.chunk_amount * self.initial_capacity[k],
+                    0,
+                )
 
     def run_quarter(
         self,
@@ -569,6 +571,20 @@ if __name__ == "__main__":
                 "Gas Production (MWh)",
                 "Hydro Production (MWh)",
                 "Coal Production (MWh)",
+                "Nuclear Capital (€)",
+                "Solar Capital (€)",
+                "Wind Capital (€)",
+                "Biomass Capital (€)",
+                "Gas Capital (€)",
+                "Hydro Capital (€)",
+                "Coal Capital (€)",
+                "Nuclear plants building",
+                "Solar plants building",
+                "Wind plants building",
+                "Biomass plants building",
+                "Gas plants building",
+                "Hydro plants building",
+                "Coal plants building",
             ]
         )
 
@@ -618,6 +634,10 @@ if __name__ == "__main__":
 
         for producer in producers:
             producer.reset()
+
+        previous_capacity = {
+            producer.name: sum(producer.capacity.values()) for producer in producers
+        }
 
         for quarter in range(60):
             log(f"\nQuarter {quarter + 1}")
@@ -676,13 +696,13 @@ if __name__ == "__main__":
                         quarterly_subsidies["Gas"],
                         quarterly_subsidies["Hydro"],
                         quarterly_subsidies["Coal"],
-                        sum(nuclear.capacity.values()),
-                        sum(solar.capacity.values()),
-                        sum(wind.capacity.values()),
-                        sum(biomass.capacity.values()),
-                        sum(gas.capacity.values()),
-                        sum(hydro.capacity.values()),
-                        sum(coal.capacity.values()),
+                        previous_capacity["Nuclear"],
+                        previous_capacity["Solar"],
+                        previous_capacity["Wind"],
+                        previous_capacity["Biomass"],
+                        previous_capacity["Gas"],
+                        previous_capacity["Hydro"],
+                        previous_capacity["Coal"],
                         daily_production["Nuclear"],
                         daily_production["Solar"],
                         daily_production["Wind"],
@@ -690,8 +710,26 @@ if __name__ == "__main__":
                         daily_production["Gas"],
                         daily_production["Hydro"],
                         daily_production["Coal"],
+                        nuclear.capital,
+                        solar.capital,
+                        wind.capital,
+                        biomass.capital,
+                        gas.capital,
+                        hydro.capital,
+                        coal.capital,
+                        len(nuclear.future_capacity),
+                        len(solar.future_capacity),
+                        len(wind.future_capacity),
+                        len(biomass.future_capacity),
+                        len(gas.future_capacity),
+                        len(hydro.future_capacity),
+                        len(coal.future_capacity),
                     ]
                 )
+
+            previous_capacity = {
+                producer.name: sum(producer.capacity.values()) for producer in producers
+            }
 
             # print_producer_metrics(producers, "After Applying Subsidies")
         # plot_interval_production(daily_interval_production)
