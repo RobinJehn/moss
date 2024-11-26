@@ -230,6 +230,64 @@ def plot_multiple_metrics_over_time_subplots(
     plt.show()
 
 
+def find_pareto_front(df, x_col, y_col):
+    """
+    Identify Pareto optimal points in the DataFrame.
+
+    Parameters:
+        df (DataFrame): DataFrame containing parameter combinations and their corresponding metrics.
+        x_col (str): Name of the column for the x-axis (e.g., total emissions).
+        y_col (str): Name of the column for the y-axis (e.g., total cost).
+
+    Returns:
+        pareto_front (DataFrame): DataFrame containing Pareto optimal points.
+    """
+    # Sort the DataFrame by the x_col (emissions) in ascending order
+    df_sorted = df.sort_values(by=[x_col], ascending=True).reset_index(drop=True)
+
+    pareto_front = []
+    current_cost = float("inf")
+
+    for _, row in df_sorted.iterrows():
+        if row[y_col] <= current_cost:
+            pareto_front.append(row)
+            current_cost = row[y_col]
+
+    pareto_front_df = pd.DataFrame(pareto_front)
+    return pareto_front_df
+
+
+def plot_pareto_front(emissions_costs, pareto_front_df):
+    """
+    Plot all parameter combinations and highlight Pareto optimal points.
+
+    Parameters:
+        emissions_costs (DataFrame): DataFrame containing all parameter combinations with their emissions and costs.
+        pareto_front_df (DataFrame): DataFrame containing Pareto optimal parameter combinations.
+    """
+    plt.figure(figsize=(10, 6))
+    plt.scatter(
+        emissions_costs["Total CO2 Emission (kgCO2e)"],
+        emissions_costs["Total Cost to Society (€)"]
+        / 1e6,  # Convert to millions for readability
+        label="All Parameter Combinations",
+        alpha=0.5,
+    )
+    plt.scatter(
+        pareto_front_df["Total CO2 Emission (kgCO2e)"],
+        pareto_front_df["Total Cost to Society (€)"] / 1e6,
+        color="red",
+        label="Pareto Optimal",
+        alpha=0.8,
+    )
+    plt.title("Pareto Frontier of CO₂ Emissions vs. Total Cost to Society")
+    plt.xlabel("Total CO₂ Emission (kgCO₂e)")
+    plt.ylabel("Total Cost to Society (€ Millions)")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+
 # Main workflow
 if __name__ == "__main__":
     # Load the data
@@ -294,13 +352,6 @@ if __name__ == "__main__":
         nuc_value=0,
         values="Total Cost to Society (€)",
     )
-    plot_values_over_time(
-        results,
-        parameters,
-        res_value=0,
-        nuc_value=0,
-        values="Total Cost to Society (€)",
-    )
 
     # Define parameter combinations (list of (RES%, NUC%))
     parameter_combinations = [
@@ -308,6 +359,27 @@ if __name__ == "__main__":
         (0.50, 0.50),  # RES%=50, NUC%=50
         (0.70, 0.30),  # RES%=70, NUC%=30
     ]
+
+    # Merge emissions and costs into a single DataFrame
+    emissions_costs = total_emissions.merge(total_costs, on=["RES%", "NUC%"])
+
+    # Now find the Pareto optimal points
+    pareto_front_df = find_pareto_front(
+        emissions_costs,
+        x_col="Total CO2 Emission (kgCO2e)",
+        y_col="Total Cost to Society (€)",
+    )
+
+    # Plotting all points and highlighting Pareto optimal points
+    plot_pareto_front(emissions_costs, pareto_front_df)
+
+    # Optionally, print the Pareto optimal parameter combinations
+    print("Pareto Optimal Parameter Combinations:")
+    print(
+        pareto_front_df[
+            ["RES%", "NUC%", "Total CO2 Emission (kgCO2e)", "Total Cost to Society (€)"]
+        ]
+    )
 
     # Define cost metrics
     cost_metrics = ["Total Cost (€)", "Total Subsidy (€)", "Total Cost to Society (€)"]
