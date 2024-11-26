@@ -56,17 +56,18 @@ class Producer:
         self.name = name
         self.capital = capital
         self.future_capacity: list[FutureCapacity] = []
-        self.chunk_cost = 1_000_000  # €
-        self.chunk_amount = 0.01  # Percentage of original capacity
-        self.chunk_time = 4  # Quarters
+        self.chunk_cost = 0  # €
+        self.chunk_amount = 0  # Percentage of original capacity
+        self.chunk_time = 0  # Quarters
         self.quarterly_profits = []
-        self.subsidies = []
+        self.planned_investment = 0
 
     def reset(self):
         self.capital = 0
         self.capacity = self.initial_capacity.copy()
         self.future_capacity = []
         self.quarterly_profits = []
+        self.planned_investment = 0
 
     def decision_making(self):
         # Check if we have enough quarterly profit data to make decisions
@@ -85,18 +86,32 @@ class Producer:
                 self.increase_capacity()
 
     def increase_capacity(self):
-        if self.capital > self.chunk_cost:
-            cost_per_quarter = self.chunk_cost / self.chunk_time
+        if self.chunk_cost == 0:
+            return
+        min_remaining = 0  # 3 * self.chunk_cost
+        available_capital = max(
+            self.capital - self.planned_investment - min_remaining, 0
+        )
+        number_to_add = min(available_capital // self.chunk_cost, 5)
+
+        cost_per_quarter = self.chunk_cost / self.chunk_time
+        self.planned_investment += self.chunk_cost * number_to_add
+        for _ in range(int(number_to_add)):
             self.future_capacity.append(
                 FutureCapacity(self.chunk_amount, self.chunk_time, cost_per_quarter)
             )
 
     def decrease_capacity(self):
-        if len(self.capacity) > 0:
-            for k in self.capacity.keys():
-                self.capacity[k] = max(
-                    self.capacity[k] - self.chunk_amount * self.initial_capacity[k], 0
-                )
+        for _ in range(3):
+            if len(self.future_capacity) > 0:
+                self.future_capacity.pop(0)
+
+            if len(self.capacity) > 0:
+                for k in self.capacity.keys():
+                    self.capacity[k] = max(
+                        self.capacity[k] - self.chunk_amount * self.initial_capacity[k],
+                        0,
+                    )
 
     def run_quarter(
         self,
@@ -130,6 +145,7 @@ class Producer:
         for future_capacity in self.future_capacity:
             future_capacity.time -= 1
             self.capital -= future_capacity.quarterly_cost
+            self.planned_investment -= future_capacity.quarterly_cost
             if future_capacity.time <= 0:
                 self.new_capacity = {
                     k: v * future_capacity.amount
@@ -254,8 +270,8 @@ class Gas(Producer):
         variable_om: float = 3.0,  # Variable O&M (€ per MWh)
     ):
         super().__init__(emission, capacity, cost, name, fixed_om, variable_om)
-        self.chunk_cost = 500_000_000  # 500 million EUR
-        self.chunk_amount = 0.01  # 1% of initial capacity
+        self.chunk_cost = 50_000_000  # 500 million EUR
+        self.chunk_amount = 0.001  # 1% of initial capacity
         self.chunk_time = 10  # Expansion time in quarters
 
 
@@ -281,7 +297,7 @@ class Biomass(Producer):
         emission: float = 600,
         capacity: float = 11_000,
         cost: float = 150,
-        name: str = "Waste",
+        name: str = "Biomass",
         fixed_om: float = 92.8,
         variable_om: float = 3.0,
     ):
@@ -313,7 +329,7 @@ class Wind(Producer):
     ):
         super().__init__(emission, capacity, cost, name, fixed_om, variable_om)
         self.chunk_cost = 125_000_000  # 125 million EUR
-        self.chunk_amount = 0.03  # 3% of initial capacity
+        self.chunk_amount = 0.003  # 0.3% of initial capacity
         self.chunk_time = 6  # Expansion time in quarters
 
 
@@ -329,7 +345,7 @@ class Solar(Producer):
     ):
         super().__init__(emission, capacity, cost, name, fixed_om, variable_om)
         self.chunk_cost = 125_000_000  # 125 million EUR
-        self.chunk_amount = 0.02  # 2% of initial capacity
+        self.chunk_amount = 0.002  # 0.2% of initial capacity
         self.chunk_time = 6  # Expansion time in quarters
 
 
@@ -543,10 +559,24 @@ if __name__ == "__main__":
                 "Total Subsidy for Gas (€)",
                 "Total Subsidy for Hydro (€)",
                 "Total Subsidy for Coal (€)",
+                "Nuclear Capacity (MW)",
+                "Solar Capacity (MW)",
+                "Wind Capacity (MW)",
+                "Biomass Capacity (MW)",
+                "Gas Capacity (MW)",
+                "Hydro Capacity (MW)",
+                "Coal Capacity (MW)",
+                "Nuclear Production (MWh)",
+                "Solar Production (MWh)",
+                "Wind Production (MWh)",
+                "Biomass Production (MWh)",
+                "Gas Production (MWh)",
+                "Hydro Production (MWh)",
+                "Coal Production (MWh)",
             ]
         )
 
-    subsidies_data = pd.read_csv("../data/subsidies_grid.csv")
+    subsidies_data = pd.read_csv("subsidies.csv")
     subsidy_simulator = SubsidySimulation(subsidies_data)
 
     data = pd.read_csv("../data/data.csv")
@@ -583,7 +613,8 @@ if __name__ == "__main__":
     demands = [value * 1_000 * demand_factor for value in data["Demand (GW)"]]
 
     producers: list[Producer] = [nuclear, hydro, wind, solar, coal, gas, biomass]
-    plot_capacities(producers, demands)
+    name_to_index = {producer.name: idx for idx, producer in enumerate(producers)}
+    # plot_capacities(producers, demands)
 
     for idx in range(len(subsidies_data)):
         log(f"\n--- Running Simulation for Subsidy Data Row {idx+1} ---")
@@ -591,7 +622,7 @@ if __name__ == "__main__":
         for producer in producers:
             producer.reset()
 
-        for quarter in range(50):
+        for quarter in range(60):
             log(f"\nQuarter {quarter + 1}")
 
             (
@@ -607,7 +638,7 @@ if __name__ == "__main__":
             log(f"Total daily emission: {daily_total_emission} kgCO2e")
 
             quarterly_subsidies = {
-                "Waste": 0,
+                "Biomass": 0,
                 "Nuclear": 0,
                 "Solar": 0,
                 "Wind": 0,
@@ -617,29 +648,27 @@ if __name__ == "__main__":
                 "Coal": 0,
             }
             for producer, daily_amount in daily_production.items():
-                for p in producers:
-                    if p.name == producer:
-                        quarterly_amount = daily_amount * 90
-                        log(
-                            f"Production for {p.name} in Quarter {quarter+1}: {quarterly_amount:.2f} MWh"
-                        )
+                p_idx = name_to_index[producer]
+                p = producers[p_idx]
+                quarterly_amount = daily_amount * 90
+                log(
+                    f"Production for {p.name} in Quarter {quarter+1}: {quarterly_amount:.2f} MWh"
+                )
 
-                        subsidy = subsidy_simulator.simulate_subsidies(
-                            idx, p, quarterly_amount
-                        )
-                        quarterly_subsidies[p.name] += subsidy
-                        p.run_quarter(
-                            daily_amount,
-                            marginal_price=marginal_price,
-                            quarterly_subsidies=subsidy,
-                        )
+                subsidy = subsidy_simulator.simulate_subsidies(idx, p, quarterly_amount)
+                quarterly_subsidies[p.name] += subsidy
+                p.run_quarter(
+                    daily_amount,
+                    marginal_price=marginal_price,
+                    quarterly_subsidies=subsidy,
+                )
             quarterly_emissions = daily_total_emission * 90
             quarterly_costs = daily_total_cost * 90
             with open(output_csv_path, mode="a", newline="") as csv_file:
                 csv_writer = csv.writer(csv_file)
                 csv_writer.writerow(
                     [
-                        idx + 1,
+                        idx,
                         quarter + 1,
                         quarterly_emissions,
                         quarterly_costs,
@@ -650,6 +679,20 @@ if __name__ == "__main__":
                         quarterly_subsidies["Gas"],
                         quarterly_subsidies["Hydro"],
                         quarterly_subsidies["Coal"],
+                        sum(nuclear.capacity.values()),
+                        sum(solar.capacity.values()),
+                        sum(wind.capacity.values()),
+                        sum(biomass.capacity.values()),
+                        sum(gas.capacity.values()),
+                        sum(hydro.capacity.values()),
+                        sum(coal.capacity.values()),
+                        daily_production["Nuclear"],
+                        daily_production["Solar"],
+                        daily_production["Wind"],
+                        daily_production["Biomass"],
+                        daily_production["Gas"],
+                        daily_production["Hydro"],
+                        daily_production["Coal"],
                     ]
                 )
 
