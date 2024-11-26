@@ -61,6 +61,7 @@ class Producer:
         self.chunk_time = 0  # Quarters
         self.quarterly_profits = []
         self.planned_investment = 0
+        self.time_per_section = 24 / len(self.capacity.keys())
 
     def reset(self):
         self.capital = 0
@@ -169,11 +170,8 @@ class Producer:
         Returns:
             capacity: Capacity in MW
         """
-        times = sorted(self.capacity.keys())
-        for t in reversed(times):
-            if time >= t:
-                return self.capacity[t]
-        return 0
+        section = int(time // self.time_per_section)
+        return self.capacity[section]
 
     def cost_f(self, time: float) -> float:
         return self.cost
@@ -442,8 +440,6 @@ class Market:
             total_emission: Total emission in kgCO2e
             production: Dictionary with the name of the producer and the MWh produced
         """
-        producers.sort(key=lambda x: x.cost_f(time))
-
         remaining_demand = demand
         total_emission = 0
         production = {producer.name: 0 for producer in producers}
@@ -613,6 +609,7 @@ if __name__ == "__main__":
     demands = [value * 1_000 * demand_factor for value in data["Demand (GW)"]]
 
     producers: list[Producer] = [nuclear, hydro, wind, solar, coal, gas, biomass]
+    producers.sort(key=lambda x: x.cost_f(0))
     name_to_index = {producer.name: idx for idx, producer in enumerate(producers)}
     # plot_capacities(producers, demands)
 
