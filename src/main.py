@@ -292,12 +292,12 @@ class Nuclear(Producer):
 class Biomass(Producer):
     def __init__(
         self,
-        emission: float = 600,
+        emission: float = 65,
         capacity: float = 11_000,
-        cost: float = 150,
+        cost: float = 0,
         name: str = "Biomass",
-        fixed_om: float = 92.8,
-        variable_om: float = 3.0,
+        fixed_om: float = 108,
+        variable_om: float = 4.0,
     ):
         super().__init__(emission, capacity, cost, name, fixed_om, variable_om)
 
